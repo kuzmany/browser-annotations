@@ -8,7 +8,7 @@
  *   2) standalone:       paste this file into DevTools console, or use as a bookmarklet.
  *
  * No build step, no framework, CSP-safe (CDP eval world), idempotent.
- * Annotations persist in localStorage per path; read them back with `bh-notes-pull`
+ * Annotations persist in localStorage per path; read them back with `bh-apply`
  * or `JSON.stringify(window.__bhAnno.items)`.
  *
  * State: window.__bhAnno = { items:[{id,selector,tag,text,note,rect,color,bg,ts}], ... }
@@ -106,7 +106,7 @@
   ph.appendChild(el("span", { class: "sp" })); ph.appendChild(bMode); ph.appendChild(bClear);
   var list = el("div", { id: "bh-list" });
   var foot = el("div", { class: "f" });
-  var fLeft = document.createElement("span"); fLeft.textContent = "export: bh-notes-pull";
+  var fLeft = document.createElement("span"); fLeft.textContent = "apply: bh-apply";
   var fRight = document.createElement("span"); fRight.textContent = "⌥A toggle";
   foot.appendChild(fLeft); foot.appendChild(fRight);
   panel.appendChild(ph); panel.appendChild(list); panel.appendChild(foot);

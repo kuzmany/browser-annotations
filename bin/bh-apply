@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
-# bh-notes-pull — read annotations from the current browser-harness tab (window.__bhAnno)
-# and write them as markdown to ./.annotations/notes.md (or $1). Also prints to stdout.
+# bh-apply — read annotations from the current browser-harness tab (window.__bhAnno)
+# and write them as markdown to ./.annotations/notes.md (or $1) for your AI agent to apply.
+# Also prints to stdout.
 #
-#   bh-notes-pull                      # -> ./.annotations/notes.md
-#   bh-notes-pull /tmp/feedback.md     # custom path
-#   bh-notes-pull --json               # raw JSON to stdout, no file
+#   bh-apply                      # -> ./.annotations/notes.md
+#   bh-apply /tmp/feedback.md     # custom path
+#   bh-apply --json               # raw JSON to stdout, no file
 #
 # Requires: browser-harness (provides `browser-harness` + bh-lib.sh).
 set -euo pipefail
 
 SELF_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 LIB="$SELF_DIR/bh-lib.sh"; [ -f "$LIB" ] || LIB="$HOME/bin/bh-lib.sh"
-[ -f "$LIB" ] || { echo "bh-notes-pull: browser-harness not found (missing bh-lib.sh)" >&2; exit 1; }
+[ -f "$LIB" ] || { echo "bh-apply: browser-harness not found (missing bh-lib.sh)" >&2; exit 1; }
 . "$LIB"
 bh_sync_bu_name
 
@@ -44,6 +45,6 @@ else:
     out = "\n".join(L)
     open(os.environ["BH_OUT"], "w").write(out)
     print(out)
-    print("[bh-notes-pull] saved -> %s  (%d annotation(s))" % (os.environ["BH_OUT"], len(items)))
+    print("[bh-apply] saved -> %s  (%d annotation(s))" % (os.environ["BH_OUT"], len(items)))
 PY
 )"

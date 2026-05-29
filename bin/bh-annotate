@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # bh-annotate — inject the annotation overlay into the current browser-harness tab (via CDP).
 # Click elements, type notes. Pins persist across reloads (localStorage + auto re-inject).
-# Export notes into your project with `bh-notes-pull`.
+# Export notes into your project with `bh-apply`.
 #
 #   bh-open http://localhost:3000/          # open your dev app (browser-harness)
 #   bh-annotate                             # overlay appears; annotate
-#   bh-notes-pull                           # -> ./.annotations/notes.md
+#   bh-apply                                # -> ./.annotations/notes.md
 #
 # Requires: browser-harness (provides `browser-harness` + bh-lib.sh).
 set -euo pipefail
@@ -60,4 +60,4 @@ except Exception:
     print("[bh-annotate]", res)
 PY
 )"
-bh_log "overlay live. Click an element, type a note, Save. (Alt+A toggles, Esc cancels.) Export: bh-notes-pull"
+bh_log "overlay live. Click an element, type a note, Save. (Alt+A toggles, Esc cancels.) Apply: bh-apply"

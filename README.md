@@ -18,12 +18,12 @@ Tools like *Vibe Annotations* / *stagewise* do this with a Chrome extension + a 
 
 - **No extension** — the overlay is injected over CDP (or pasted into the console).
 - **No server, no MCP, no license dance** — annotations live in `localStorage`; you export a `.md`.
-- **Agent reads a file** — `bh-notes-pull` writes `./.annotations/notes.md`; the agent reads it. No copy‑paste.
+- **Agent reads a file** — `bh-apply` writes `./.annotations/notes.md`; the agent reads it. No copy‑paste.
 
 ```
 bh-open http://localhost:3000/     # open your dev app
 bh-annotate                        # overlay appears → click + type notes
-bh-notes-pull                      # -> ./.annotations/notes.md
+bh-apply                      # -> ./.annotations/notes.md
 # agent reads notes.md, edits code, reload, verify — repeat
 ```
 
@@ -33,7 +33,7 @@ bh-notes-pull                      # -> ./.annotations/notes.md
 |---|---|
 | `overlay/bh-annotate.js` | The overlay (hover highlight, click→note, numbered pins, panel). **Standalone** — also works pasted into DevTools or as a bookmarklet. |
 | `bin/bh-annotate` | Injects the overlay into the current browser-harness tab via CDP; auto re-injects on reload. |
-| `bin/bh-notes-pull` | Reads `window.__bhAnno.items`, writes markdown (`./.annotations/notes.md`) + prints it. |
+| `bin/bh-apply` | Reads `window.__bhAnno.items`, writes markdown (`./.annotations/notes.md`) + prints it. |
 
 ## Requirements
 
@@ -61,7 +61,7 @@ copy(JSON.stringify(window.__bhAnno.items, null, 2))   // annotations on clipboa
 1. `bh-open <url>` — open your app (browser-harness).
 2. `bh-annotate` — overlay loads. **Hover** highlights an element; **click** opens a note box;
    **Save** (or ⌘/Ctrl+Enter). **Alt+A** pauses/resumes; **Esc** cancels; **Clear** wipes the page.
-3. `bh-notes-pull` — writes `./.annotations/notes.md`:
+3. `bh-apply` — writes `./.annotations/notes.md`:
 
 ```markdown
 # Web annotations — 1 item(s)
@@ -82,7 +82,7 @@ box 95x36 @1466,1309 · color rgb(10,13,23) · bg rgb(255,90,54)
   first so reloads never run stale copies.
 - The overlay generates a **shortest unique CSS selector** (`#id` fast-path → `:nth-of-type` path),
   captures tag, text, bounding box and key colors, and stores everything in `localStorage` per path.
-- `bh-notes-pull` reads `window.__bhAnno.items` over CDP and formats markdown.
+- `bh-apply` reads `window.__bhAnno.items` over CDP and formats markdown.
 
 ## License
 
