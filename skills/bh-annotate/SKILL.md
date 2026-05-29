@@ -33,12 +33,14 @@ e.g. "open localhost:3000 for comments", "let me mark what to change", "review t
    bh-annotate --url <substr>     # --url pins the tab (recommended if several are open)
    ```
 
-3. **Hand off to the user.** Tell them, concisely:
-   > Hover an element → click → type a note → **Save** (or ⌘/Ctrl+Enter). **Alt+A** pause, **Clear** wipes. Say **"pull"** / "done" when finished.
+3. **Announce + hand off.** After finishing your own changes, keep the tab at that address with the overlay
+   live, then tell the user — concisely and explicitly that it's their turn:
+   > ✅ Done from my side. Annotate at `<url>`: hover → click → note → **Save** (⌘/Ctrl+Enter). **Alt+A** pause, **Clear** wipes. Write **"done"** when finished.
 
-   Then stop and wait. Do **not** poll.
+   Then **STOP and wait** — do not poll, do not move/close/reopen the tab. The overlay + pins persist at that
+   URL across reloads (localStorage per path), so the page stays ready while the user clicks.
 
-4. **Apply.** When they say pull/done:
+4. **Apply.** When the user writes **"done"** (or "pull"):
    ```bash
    bh-apply --url <substr>        # writes ./.annotations/notes.md (+ prints it)
    ```
