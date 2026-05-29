@@ -22,9 +22,9 @@ No Chrome extension. No MCP server. No account. Just CDP + one small JS overlay.
 ## The loop
 
 ```bash
-bh-open http://localhost:3000/     # open your dev app (browser-harness)
-bh-annotate                        # overlay appears → click elements, type notes
-bh-apply                           # -> ./.annotations/notes.md
+# open your app in a Chrome with --remote-debugging-port  (or `bh-open <url>`)
+bh-annotate --url localhost:3000   # inject the overlay → click elements, type notes
+bh-apply    --url localhost:3000   # -> ./.annotations/notes.md
 #  → your agent reads notes.md, edits the code, you reload & verify — repeat
 ```
 
@@ -43,9 +43,10 @@ drive Chrome over CDP, the browser *is* the integration:
 
 ## Requirements
 
-- **A CDP-driven Chrome.** The two wrappers target [browser-harness](https://github.com/browser-use/browser-use)
-  (the `browser-harness` CLI + `bh-lib.sh` for session/daemon handling).
-- The **overlay itself needs nothing** — paste `overlay/bh-annotate.js` into DevTools or use it as a bookmarklet on any page.
+- **Python 3** (standard library only — the CDP client is dependency-free) and
+- **a Chrome with remote debugging** — `chrome --remote-debugging-port=9222`.
+- **browser-harness is optional** — only handy for `bh-open` (opening tabs in the right profile). The CLI talks to Chrome directly; it does not need it.
+- The **overlay itself needs nothing** — paste `overlay/bh-annotate.js` into DevTools or run it as a bookmarklet on any page.
 - Works on `localhost`, `127.0.0.1`, `*.test`, `*.local`, and `file://`.
 
 ## Install
@@ -68,17 +69,19 @@ reads your notes, edits the code, and reloads to verify. Say *"pull"* / *"done"*
 
 ### 2. The runtime — `bh-annotate` / `bh-apply` CLI + overlay
 
-The skill calls two small commands that drive Chrome over CDP. Install them once:
+The skill calls two small commands (`bh-annotate`, `bh-apply`) — a thin shell wrapper over a
+dependency-free Python CDP client. Install them once:
 
 ```bash
 git clone https://github.com/kuzmany/bh-annotate.git
 cd bh-annotate && ./install.sh   # symlinks bin/* → ~/bin, overlay → ~/.bh-workspace, skill → ~/.claude/skills
 ```
 
-Requires [browser-harness](https://github.com/browser-use/browser-use) (`browser-harness` CLI + `bh-lib.sh`).
-`install.sh` also installs the skill locally, so on a browser-harness box you can skip step 1.
+Needs only **Python 3** + a Chrome with `--remote-debugging-port`. Point it at your browser with
+`--cdp`, `$CDP_URL`, or `$BU_CDP_WS` (defaults to `http://localhost:9222`). `install.sh` also installs
+the skill locally, so you can skip step 1.
 
-### Standalone (no browser-harness, no install)
+### Standalone (nothing installed)
 
 Paste `overlay/bh-annotate.js` into the DevTools console, annotate, then export from the console:
 
@@ -92,8 +95,10 @@ Or make it a **bookmarklet** — `javascript:(function(){…paste the file…})(
 
 | Command | What it does |
 |---|---|
-| `bh-annotate` | Inject the overlay into the current browser-harness tab via CDP. Auto re-injects on reload; removes its previous registration so reloads never run stale copies. |
-| `bh-apply [path\|--json]` | Read `window.__bhAnno.items` from the tab and write markdown to `./.annotations/notes.md` (or a path) for your agent to apply. `--json` prints raw JSON. |
+| `bh-annotate [--url SUB] [--cdp URL]` | Inject the overlay into a Chrome tab over CDP. Auto re-injects on reload; removes its previous registration so reloads never run stale copies. `--url` pins a tab by URL substring. |
+| `bh-apply [--url SUB] [--cdp URL] [--out PATH] [--json]` | Read `window.__bhAnno.items` from the tab and write markdown to `./.annotations/notes.md` (or `--out`) for your agent to apply. `--json` prints raw JSON. |
+
+Endpoint resolution: `--cdp` → `$CDP_URL` → `$BU_CDP_WS` → `http://localhost:9222`. With several tabs open, pass `--url` to pin the right one.
 
 **In the overlay:** hover highlights an element · click opens a note box · **Save** (or ⌘/Ctrl+Enter) ·
 **Esc** cancels · **Alt+A** pause/resume · **Clear** wipes the page · the **✕** on a row deletes one.
@@ -121,13 +126,16 @@ agent to locate and change the right thing without guessing.
 
 ## How it works
 
-1. `bh-annotate` registers the overlay with `Page.addScriptToEvaluateOnNewDocument` (so it returns on every
-   reload) and runs it once with `Runtime.evaluate` for the current page. It removes its previous registration
-   first, so reloads never stack stale copies.
-2. The overlay builds the **shortest unique selector** for each clicked element (`#id` fast-path →
+1. `lib/cdp.py` is a ~150-line, **dependency-free** CDP client (stdlib WebSocket): it connects to the
+   **browser-level** endpoint, lists targets, and `Target.attachToTarget {flatten:true}` to drive the chosen
+   page over one session — so it works locally and through a remote tunnel with no per-target host rewrite.
+2. `bh-annotate` registers the overlay with `Page.addScriptToEvaluateOnNewDocument` (so it returns on every
+   reload) and runs it once with `Runtime.evaluate`. It removes its previous registration first, so reloads
+   never stack stale copies.
+3. The overlay builds the **shortest unique selector** for each clicked element (`#id` fast-path →
    `:nth-of-type` path, short-circuiting as soon as it's unique), captures tag, text, bounding box and key
    colors, and stores everything in `localStorage` keyed by path.
-3. `bh-apply` reads `window.__bhAnno.items` back over CDP and formats the markdown.
+4. `bh-apply` reads `window.__bhAnno.items` back over CDP and formats the markdown.
 
 Because injection happens in the CDP eval world, it is **CSP-safe** and works even on pages that block inline scripts.
 

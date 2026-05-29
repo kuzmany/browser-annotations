@@ -1,50 +1,16 @@
 #!/usr/bin/env bash
-# bh-apply — read annotations from the current browser-harness tab (window.__bhAnno)
-# and write them as markdown to ./.annotations/notes.md (or $1) for your AI agent to apply.
-# Also prints to stdout.
+# bh-apply — read annotations from a Chrome tab over CDP and write them as
+# markdown to ./.annotations/notes.md for your AI agent to apply.
+# No browser-harness needed.
 #
-#   bh-apply                      # -> ./.annotations/notes.md
-#   bh-apply /tmp/feedback.md     # custom path
-#   bh-apply --json               # raw JSON to stdout, no file
+#   bh-apply                            # -> ./.annotations/notes.md
+#   bh-apply --url localhost:3000       # pin to a tab by URL substring
+#   bh-apply --out /tmp/feedback.md     # custom path
+#   bh-apply --json                     # raw JSON to stdout, no file
 #
-# Requires: browser-harness (provides `browser-harness` + bh-lib.sh).
+# Endpoint:  --cdp  ->  $CDP_URL  ->  $BU_CDP_WS  ->  http://localhost:9222
 set -euo pipefail
-
 SELF_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
-LIB="$SELF_DIR/bh-lib.sh"; [ -f "$LIB" ] || LIB="$HOME/bin/bh-lib.sh"
-[ -f "$LIB" ] || { echo "bh-apply: browser-harness not found (missing bh-lib.sh)" >&2; exit 1; }
-. "$LIB"
-bh_sync_bu_name
+ROOT="$(cd "$SELF_DIR/.." && pwd)"
 
-MODE="md"; OUT="$PWD/.annotations/notes.md"
-if [ "${1:-}" = "--json" ]; then MODE="json"; elif [ -n "${1:-}" ]; then OUT="$1"; fi
-[ "$MODE" = "md" ] && mkdir -p "$(dirname "$OUT")"
-export BH_OUT="$OUT" BH_MODE="$MODE"
-
-browser-harness -c "$(cat <<'PY'
-import os, json
-raw = js("JSON.stringify((window.__bhAnno&&window.__bhAnno.items)||[])")
-items = json.loads(raw) if raw else []
-href = js("location.href")
-
-if os.environ["BH_MODE"] == "json":
-    print(json.dumps(items, ensure_ascii=False, indent=2))
-else:
-    L = ["# Web annotations — %d item(s)" % len(items), "", "Source: %s" % href, ""]
-    for a in items:
-        sel = a.get("selector", ""); tag = a.get("tag", ""); txt = (a.get("text") or "")[:60]
-        r = a.get("rect") or {}
-        L.append("## [#%s] `%s`  — %s \"%s\"" % (a.get("id"), sel, tag, txt))
-        L.append("note: %s" % a.get("note", ""))
-        meta = []
-        if r: meta.append("box %sx%s @%s,%s" % (r.get("w", 0), r.get("h", 0), r.get("x", 0), r.get("y", 0)))
-        if a.get("color"): meta.append("color %s" % a["color"])
-        if a.get("bg"): meta.append("bg %s" % a["bg"])
-        if meta: L.append(" · ".join(meta))
-        L.append("")
-    out = "\n".join(L)
-    open(os.environ["BH_OUT"], "w").write(out)
-    print(out)
-    print("[bh-apply] saved -> %s  (%d annotation(s))" % (os.environ["BH_OUT"], len(items)))
-PY
-)"
+exec python3 "$ROOT/lib/cdp.py" pull "$@"
