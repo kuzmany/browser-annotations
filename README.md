@@ -50,13 +50,35 @@ drive Chrome over CDP, the browser *is* the integration:
 
 ## Install
 
+There are two layers — the **skill** (how the agent uses it) and the **runtime** (the CLI + overlay).
+
+### 1. The skill — any agent, via [skills.sh](https://www.skills.sh)
+
 ```bash
-git clone https://github.com/kuzmany/bh-annotate.git
-cd bh-annotate
-./install.sh          # symlinks bin/* into ~/bin and the overlay into ~/.bh-workspace
+npx skills add kuzmany/bh-annotate              # installs to every agent you have (Claude Code, Cursor, …)
+npx skills add kuzmany/bh-annotate -a claude    # or target one;  --agent '*' for all
 ```
 
-### Standalone (no browser-harness)
+Then the whole loop is one sentence — no commands to remember:
+
+> **"open localhost:3000 for comments"**
+
+The agent opens the page, injects the overlay, waits while you click + note, then runs `bh-apply`,
+reads your notes, edits the code, and reloads to verify. Say *"pull"* / *"done"* when you're finished marking up.
+
+### 2. The runtime — `bh-annotate` / `bh-apply` CLI + overlay
+
+The skill calls two small commands that drive Chrome over CDP. Install them once:
+
+```bash
+git clone https://github.com/kuzmany/bh-annotate.git
+cd bh-annotate && ./install.sh   # symlinks bin/* → ~/bin, overlay → ~/.bh-workspace, skill → ~/.claude/skills
+```
+
+Requires [browser-harness](https://github.com/browser-use/browser-use) (`browser-harness` CLI + `bh-lib.sh`).
+`install.sh` also installs the skill locally, so on a browser-harness box you can skip step 1.
+
+### Standalone (no browser-harness, no install)
 
 Paste `overlay/bh-annotate.js` into the DevTools console, annotate, then export from the console:
 
@@ -65,16 +87,6 @@ copy(JSON.stringify(window.__bhAnno.items, null, 2))   // annotations on your cl
 ```
 
 Or make it a **bookmarklet** — `javascript:(function(){…paste the file…})()` — and annotate any page with one click.
-
-## Use it as a Claude Code skill
-
-`install.sh` also drops a [Claude Code](https://claude.com/claude-code) skill into `~/.claude/skills/bh-annotate`,
-so the whole loop becomes one sentence — no commands to remember:
-
-> **"open localhost:3000 for comments"**
-
-Claude opens the page, injects the overlay, waits while you click + note, then runs `bh-apply`,
-reads your notes, edits the code, and reloads to verify. Say *"pull"* / *"done"* when you've finished marking up.
 
 ## Commands
 
