@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# bh-annotate — inject the annotation overlay into the current browser-harness tab (via CDP).
+# Click elements, type notes. Pins persist across reloads (localStorage + auto re-inject).
+# Export notes into your project with `bh-notes-pull`.
+#
+#   bh-open http://localhost:3000/          # open your dev app (browser-harness)
+#   bh-annotate                             # overlay appears; annotate
+#   bh-notes-pull                           # -> ./.annotations/notes.md
+#
+# Requires: browser-harness (provides `browser-harness` + bh-lib.sh).
+set -euo pipefail
+
+SELF_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+LIB="$SELF_DIR/bh-lib.sh"; [ -f "$LIB" ] || LIB="$HOME/bin/bh-lib.sh"
+[ -f "$LIB" ] || { echo "bh-annotate: browser-harness not found (missing bh-lib.sh)" >&2; exit 1; }
+. "$LIB"
+bh_sync_bu_name
+
+# Overlay JS: $BH_ANNOTATE_JS override -> repo copy -> installed copy.
+JS_FILE="${BH_ANNOTATE_JS:-}"
+if [ -z "$JS_FILE" ]; then
+    for c in "$SELF_DIR/../overlay/bh-annotate.js" "$HOME/.bh-workspace/bh-annotate.js"; do
+        [ -f "$c" ] && JS_FILE="$c" && break
+    done
+fi
+[ -f "$JS_FILE" ] || bh_fail "overlay JS not found (set BH_ANNOTATE_JS)"
+export BH_JS="$(cat "$JS_FILE")"
+# Track our document-start registration per session daemon so reloads don't run stale copies.
+export BH_IDFILE="/tmp/bh-annotate-script-${BU_NAME:-default}.id"
+
+browser-harness -c "$(cat <<'PY'
+import os
+SRC = os.environ["BH_JS"]
+IDFILE = os.environ["BH_IDFILE"]
+try:
+    cdp("Page.enable")
+except Exception as e:
+    print("[bh-annotate] warn Page.enable:", e)
+# Remove our previous document-start registration (prevents stale duplicates on reload).
+try:
+    if os.path.exists(IDFILE):
+        prev = open(IDFILE).read().strip()
+        if prev:
+            cdp("Page.removeScriptToEvaluateOnNewDocument", identifier=prev)
+except Exception as e:
+    print("[bh-annotate] warn remove prev:", e)
+# Register fresh: runs at document-start on every navigation/reload (overlay auto re-injects).
+try:
+    r = cdp("Page.addScriptToEvaluateOnNewDocument", source=SRC)
+    ident = (r or {}).get("identifier") if isinstance(r, dict) else None
+    if ident:
+        open(IDFILE, "w").write(str(ident))
+except Exception as e:
+    print("[bh-annotate] warn addScriptToEvaluateOnNewDocument:", e)
+# Apply to the page open right now.
+res = cdp("Runtime.evaluate", expression=SRC, userGesture=True, returnByValue=True)
+try:
+    print("[bh-annotate]", (res.get("result") or {}).get("value") or res)
+except Exception:
+    print("[bh-annotate]", res)
+PY
+)"
+bh_log "overlay live. Click an element, type a note, Save. (Alt+A toggles, Esc cancels.) Export: bh-notes-pull"

@@ -1,0 +1,4 @@
+.annotations/
+*.id
+.DS_Store
+node_modules/

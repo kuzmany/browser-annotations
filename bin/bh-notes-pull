@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# bh-notes-pull — read annotations from the current browser-harness tab (window.__bhAnno)
+# and write them as markdown to ./.annotations/notes.md (or $1). Also prints to stdout.
+#
+#   bh-notes-pull                      # -> ./.annotations/notes.md
+#   bh-notes-pull /tmp/feedback.md     # custom path
+#   bh-notes-pull --json               # raw JSON to stdout, no file
+#
+# Requires: browser-harness (provides `browser-harness` + bh-lib.sh).
+set -euo pipefail
+
+SELF_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+LIB="$SELF_DIR/bh-lib.sh"; [ -f "$LIB" ] || LIB="$HOME/bin/bh-lib.sh"
+[ -f "$LIB" ] || { echo "bh-notes-pull: browser-harness not found (missing bh-lib.sh)" >&2; exit 1; }
+. "$LIB"
+bh_sync_bu_name
+
+MODE="md"; OUT="$PWD/.annotations/notes.md"
+if [ "${1:-}" = "--json" ]; then MODE="json"; elif [ -n "${1:-}" ]; then OUT="$1"; fi
+[ "$MODE" = "md" ] && mkdir -p "$(dirname "$OUT")"
+export BH_OUT="$OUT" BH_MODE="$MODE"
+
+browser-harness -c "$(cat <<'PY'
+import os, json
+raw = js("JSON.stringify((window.__bhAnno&&window.__bhAnno.items)||[])")
+items = json.loads(raw) if raw else []
+href = js("location.href")
+
+if os.environ["BH_MODE"] == "json":
+    print(json.dumps(items, ensure_ascii=False, indent=2))
+else:
+    L = ["# Web annotations — %d item(s)" % len(items), "", "Source: %s" % href, ""]
+    for a in items:
+        sel = a.get("selector", ""); tag = a.get("tag", ""); txt = (a.get("text") or "")[:60]
+        r = a.get("rect") or {}
+        L.append("## [#%s] `%s`  — %s \"%s\"" % (a.get("id"), sel, tag, txt))
+        L.append("note: %s" % a.get("note", ""))
+        meta = []
+        if r: meta.append("box %sx%s @%s,%s" % (r.get("w", 0), r.get("h", 0), r.get("x", 0), r.get("y", 0)))
+        if a.get("color"): meta.append("color %s" % a["color"])
+        if a.get("bg"): meta.append("bg %s" % a["bg"])
+        if meta: L.append(" · ".join(meta))
+        L.append("")
+    out = "\n".join(L)
+    open(os.environ["BH_OUT"], "w").write(out)
+    print(out)
+    print("[bh-notes-pull] saved -> %s  (%d annotation(s))" % (os.environ["BH_OUT"], len(items)))
+PY
+)"
