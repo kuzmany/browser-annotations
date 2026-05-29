@@ -37,19 +37,18 @@ git clone https://github.com/kuzmany/bh-annotate && cd bh-annotate && ./install.
 
 **No install at all?** Paste `overlay/bh-annotate.js` into the DevTools console and annotate any page.
 
-## Use it — just talk to your agent
+## Use it — one sentence
 
-Say things like:
+> **"validate this feature on localhost:3000 in the browser"**
 
-- **"open localhost:3000 for comments"** — opens it, turns annotations on, waits for you
-- **"build a pricing section like Stripe, then let me check it via annotations"**
-- **"open localhost:3000, make the hero bigger, then I'll annotate the tweaks"**
-- **"validate localhost:3000 in the browser"** — agent verifies, then enables annotations
+1. **Agent builds + self-verifies.** It makes the change, opens the page, screenshots it, and checks it
+   renders and matches the request — *only then* reports done. No broken hand-offs.
+2. **You review + annotate.** Annotations are already on: **hover → click → type a note → Save**.
+   (Or hit **Copy** to grab all notes as markdown.) Write **"done"** when finished.
+3. **Back to the CLI.** The agent reads your notes, applies each one, re-verifies in the browser, and tells
+   you what changed. Loop until you're happy.
 
-Then in the browser: **hover → click → type a note → Save**. Write **"done"** when finished.
-The agent applies your notes, reloads, verifies, and tells you what changed. Repeat until happy.
-
-> Overlay shortcuts: Save = ⌘/Ctrl+Enter · **Alt+A** pause · **Clear** wipes · **✕** deletes one.
+> Overlay: Save = ⌘/Ctrl+Enter · **Copy** = notes → clipboard · **Alt+A** pause · **Clear** wipes · **✕** deletes one.
 
 ## Commands (what the agent runs for you)
 

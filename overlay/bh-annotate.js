@@ -64,12 +64,12 @@
     "#bh-input .bh-row{display:flex;gap:6px;margin-top:8px;justify-content:flex-end}" +
     ".bh-btn{cursor:pointer;border:none;border-radius:6px;font:600 12px/1 " + FONT + ";padding:8px 12px}" +
     ".bh-btn.p{background:" + ACCENT + ";color:#0A0D17}.bh-btn.s{background:#222a39;color:#cdd3df}" +
-    "#bh-panel{position:fixed;right:14px;bottom:14px;z-index:" + (Z + 2) + ";width:288px;max-height:46vh;display:flex;flex-direction:column;background:#10141F;color:#FAF7F1;border:1px solid #232a3a;border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.55);overflow:hidden}" +
-    "#bh-panel .h{display:flex;align-items:center;gap:8px;padding:10px 11px;background:#0A0D17;border-bottom:1px solid #232a3a}" +
+    "#bh-panel{position:fixed;right:14px;bottom:14px;z-index:" + (Z + 2) + ";width:320px;max-height:46vh;display:flex;flex-direction:column;background:#10141F;color:#FAF7F1;border:1px solid #232a3a;border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.55);overflow:hidden}" +
+    "#bh-panel .h{display:flex;align-items:center;gap:6px;padding:10px 11px;background:#0A0D17;border-bottom:1px solid #232a3a}" +
     "#bh-panel .h .dot{width:8px;height:8px;border-radius:50%;background:" + ACCENT + ";flex:0 0 auto}" +
     "#bh-panel .h .ttl{font:700 13px/1 " + FONT + ";white-space:nowrap}" +
     "#bh-panel .h .sp{flex:1}" +
-    "#bh-panel .h button{cursor:pointer;border:1px solid #2a3344;background:#1b2230;color:#cdd3df;border-radius:7px;font:600 11px/1 " + FONT + ";padding:6px 9px;letter-spacing:.2px}" +
+    "#bh-panel .h button{flex:0 0 auto;cursor:pointer;border:1px solid #2a3344;background:#1b2230;color:#cdd3df;border-radius:7px;font:600 11px/1 " + FONT + ";padding:5px 7px;letter-spacing:.1px}" +
     "#bh-panel .h button:hover{background:#243049;color:#fff}" +
     "#bh-list{overflow:auto;padding:6px}" +
     "#bh-list .empty{padding:16px 10px;color:#6b7488;font:12px/1.4 " + FONT + ";text-align:center}" +
@@ -99,11 +99,11 @@
   var panel = el("div", { id: "bh-panel" });
   var ph = el("div", { class: "h" });
   var pTitle = el("span", { class: "ttl" });
-  var bMode = document.createElement("button"), bClear = document.createElement("button");
-  bMode.setAttribute("data-bh-ui", "1"); bClear.setAttribute("data-bh-ui", "1");
-  bClear.textContent = "Clear";
+  var bMode = document.createElement("button"), bCopy = document.createElement("button"), bClear = document.createElement("button");
+  bMode.setAttribute("data-bh-ui", "1"); bCopy.setAttribute("data-bh-ui", "1"); bClear.setAttribute("data-bh-ui", "1");
+  bCopy.textContent = "Copy"; bClear.textContent = "Clear";
   ph.appendChild(el("span", { class: "dot" })); ph.appendChild(pTitle);
-  ph.appendChild(el("span", { class: "sp" })); ph.appendChild(bMode); ph.appendChild(bClear);
+  ph.appendChild(el("span", { class: "sp" })); ph.appendChild(bCopy); ph.appendChild(bMode); ph.appendChild(bClear);
   var list = el("div", { id: "bh-list" });
   var foot = el("div", { class: "f" });
   var fLeft = document.createElement("span"); fLeft.textContent = "apply: bh-apply";
@@ -207,13 +207,47 @@
   }, true);
   window.addEventListener("scroll", layoutPins, true);
   window.addEventListener("resize", layoutPins);
+  // ---------- markdown export (same format as bh-apply) ----------
+  function toMarkdown() {
+    var L = ["# Web annotations — " + S.items.length + " item(s)", "", "Source: " + location.href, ""];
+    S.items.forEach(function (a) {
+      var r = a.rect || {};
+      L.push("## [#" + a.id + "] `" + a.selector + "`  — " + a.tag + ' "' + (a.text || "").slice(0, 60) + '"');
+      L.push("note: " + a.note);
+      var m = [];
+      if (r.w != null) m.push("box " + r.w + "x" + r.h + " @" + r.x + "," + r.y);
+      if (a.color) m.push("color " + a.color);
+      if (a.bg) m.push("bg " + a.bg);
+      if (m.length) L.push(m.join(" · "));
+      L.push("");
+    });
+    return L.join("\n");
+  }
+  function flashCopy(label) { var o = bCopy.textContent; bCopy.textContent = label; setTimeout(function () { bCopy.textContent = o; }, 1200); }
+  function copyMarkdown() {
+    if (!S.items.length) { flashCopy("empty"); return; }
+    var md = toMarkdown();
+    var fallback = function () {
+      try {
+        var ta = el("textarea", {}); ta.value = md; ta.style.cssText = "position:fixed;opacity:0;left:-9999px";
+        (document.body || document.documentElement).appendChild(ta); ta.focus(); ta.select();
+        document.execCommand("copy"); ta.remove(); flashCopy("✓ Copied");
+      } catch (e) { flashCopy("✗ failed"); }
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(md).then(function () { flashCopy("✓ Copied"); }, fallback);
+    } else { fallback(); }
+  }
+
   bSave.onclick = commit; bCancel.onclick = cancel;
+  bCopy.onclick = copyMarkdown;
   bMode.onclick = function () { S.mode = !S.mode; render(); };
   bClear.onclick = function () { if (confirm("Clear all annotations on this page?")) { S.items = []; save(); render(); } };
 
   // ---------- public API ----------
   S.show = function () { if (panel) panel.style.display = "flex"; };
   S.dump = function () { return S.items; };
+  S.markdown = toMarkdown;
   S.clear = function () { S.items = []; save(); render(); };
 
   S.ready = true;
