@@ -22,33 +22,49 @@ e.g. "open localhost:3000 for comments", "let me mark what to change", "review t
 - browser-harness rig: the endpoint lives in its `.env` as `BU_CDP_WS` (e.g. `ws://<tailscale-ip>:9333/…`).
   Pass it through: `--cdp "$BU_CDP_WS"` or `export BU_CDP_WS=...` first.
 
-## The loop
+## Triggers
 
-1. **Open the page** in the CDP Chrome (start the dev server first if needed).
+Any of these run the **self-verifying loop** below — and **enable annotations automatically** (inject the overlay
+as part of validating in the browser): "do X, validate it in the browser", "do X and let me check / review it",
+"open `<url>` for comments", "let me annotate", "build X then I'll comment".
+
+## The loop (self-verifying — never hand off broken work)
+
+1. **Make the change** the user asked for.
+
+2. **Open the page** in the CDP Chrome (start the dev server first if needed).
    - browser-harness: `bh-open <url>`
    - plain Chrome: open the tab in a `--remote-debugging-port=9222` Chrome.
 
-2. **Inject the overlay.**
+3. **Self-verify BEFORE handing off (required).** Screenshot and actually look:
    ```bash
-   bh-annotate --url <substr>     # --url pins the tab (recommended if several are open)
+   bh-shot /tmp/v.png 1600                                  # browser-harness, auto-resizes
+   # or, no browser-harness:
+   python3 <repo>/lib/cdp.py shot --url <substr> --out /tmp/v.png
    ```
+   Read the image. Confirm: the page renders, no errors, and **your change is visibly present and matches the
+   instruction**. If not → fix and re-verify. Only continue once it's genuinely OK *for you*.
 
-3. **Announce + hand off.** After finishing your own changes, keep the tab at that address with the overlay
-   live, then tell the user — concisely and explicitly that it's their turn:
-   > ✅ Done from my side. Annotate at `<url>`: hover → click → note → **Save** (⌘/Ctrl+Enter). **Alt+A** pause, **Clear** wipes. Write **"done"** when finished.
+4. **Enable annotations + announce.** Inject the overlay and hand off explicitly:
+   ```bash
+   bh-annotate --url <substr>     # --url pins the tab; annotations now ON
+   ```
+   > ✅ Done & verified from my side. Annotate at `<url>`: hover → click → note → **Save** (⌘/Ctrl+Enter). **Alt+A** pause, **Clear** wipes. Write **"done"** when finished.
 
-   Then **STOP and wait** — do not poll, do not move/close/reopen the tab. The overlay + pins persist at that
-   URL across reloads (localStorage per path), so the page stays ready while the user clicks.
+   Then **STOP and wait** — do not poll, do not move/close/reopen the tab. Overlay + pins persist at that URL
+   across reloads (localStorage per path), so the page stays ready while the user clicks.
 
-4. **Apply.** When the user writes **"done"** (or "pull"):
+5. **Apply.** When the user writes **"done"** (or "pull"):
    ```bash
    bh-apply --url <substr>        # writes ./.annotations/notes.md (+ prints it)
    ```
    Read `./.annotations/notes.md` and implement each annotation. Every note carries a **unique CSS selector**,
-   the element's tag + text, and its box/colors — use them to locate the exact element. No guessing.
+   the element's tag + text, and its box/colors — locate the exact element, no guessing.
 
-5. **Verify.** Reload the page and screenshot to confirm. Then clear resolved annotations (overlay panel
-   **Clear**, or `window.__bhAnno.clear()`) so they don't reappear. Repeat until the user is happy.
+6. **Self-verify AFTER applying (required).** Reload, screenshot again, and check **each note was addressed and
+   still matches the original instructions**. If a note isn't satisfied → fix and re-verify. Then **report to the
+   user**: a short per-note summary (done / how) + that it's verified. Clear resolved annotations (overlay
+   **Clear** / `window.__bhAnno.clear()`) so they don't reappear, and offer another round.
 
 ## Commands
 

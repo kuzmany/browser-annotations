@@ -245,13 +245,34 @@ def cmd_pull(args):
     print(out_text)
     print(f"[bh-apply] saved -> {out_path}  ({len(items)} annotation(s))")
 
+def cmd_shot(args):
+    ws_url = resolve_browser_ws(args.cdp)
+    ws = WS(ws_url, timeout=40); cdp = CDP(ws)
+    try:
+        sess, url = pick_page(cdp, args.url)
+        cdp.call("Page.enable", session=sess)
+        params = {"format": "png"}
+        if args.full:
+            params["captureBeyondViewport"] = True
+        data = cdp.call("Page.captureScreenshot", params, session=sess).get("data", "")
+    finally:
+        ws.close()
+    if not data:
+        raise SystemExit("[shot] empty screenshot")
+    out = args.out or "/tmp/bh-cdp-shot.png"
+    os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
+    with open(out, "wb") as f:
+        f.write(base64.b64decode(data))
+    print(f"[shot] saved -> {out}  ({url[:60]})")
+
 def main():
     p = argparse.ArgumentParser(prog="bh-cdp", add_help=True)
     sub = p.add_subparsers(dest="cmd", required=True)
     pi = sub.add_parser("inject"); pi.add_argument("--js-file", required=True); pi.add_argument("--url"); pi.add_argument("--cdp")
     pp = sub.add_parser("pull");   pp.add_argument("--url"); pp.add_argument("--cdp"); pp.add_argument("--json", action="store_true"); pp.add_argument("--out")
+    ps = sub.add_parser("shot");   ps.add_argument("--url"); ps.add_argument("--cdp"); ps.add_argument("--out"); ps.add_argument("--full", action="store_true")
     args = p.parse_args()
-    (cmd_inject if args.cmd == "inject" else cmd_pull)(args)
+    {"inject": cmd_inject, "pull": cmd_pull, "shot": cmd_shot}[args.cmd](args)
 
 if __name__ == "__main__":
     main()

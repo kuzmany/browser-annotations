@@ -45,7 +45,7 @@ drive Chrome over CDP, the browser *is* the integration:
 
 - **Python 3** (standard library only — the CDP client is dependency-free) and
 - **a Chrome with remote debugging** — `chrome --remote-debugging-port=9222`.
-- **browser-harness is optional** — only handy for `bh-open` (opening tabs in the right profile). The CLI talks to Chrome directly; it does not need it.
+- **[browser-harness](https://github.com/browser-use/browser-harness) is optional** — handy for `bh-open` (opening tabs in the right session/profile) and `bh-shot`. The CLI talks to Chrome directly; it does not need it.
 - The **overlay itself needs nothing** — paste `overlay/bh-annotate.js` into DevTools or run it as a bookmarklet on any page.
 - Works on `localhost`, `127.0.0.1`, `*.test`, `*.local`, and `file://`.
 
@@ -99,6 +99,9 @@ Or make it a **bookmarklet** — `javascript:(function(){…paste the file…})(
 | `bh-apply [--url SUB] [--cdp URL] [--out PATH] [--json]` | Read `window.__bhAnno.items` from the tab and write markdown to `./.annotations/notes.md` (or `--out`) for your agent to apply. `--json` prints raw JSON. |
 
 Endpoint resolution: `--cdp` → `$CDP_URL` → `$BU_CDP_WS` → `http://localhost:9222`. With several tabs open, pass `--url` to pin the right one.
+
+For self-verification, the same dependency-free client can screenshot over CDP:
+`python3 lib/cdp.py shot --url <SUB> --out shot.png [--full]` (or use `bh-shot` if you have browser-harness).
 
 **In the overlay:** hover highlights an element · click opens a note box · **Save** (or ⌘/Ctrl+Enter) ·
 **Esc** cancels · **Alt+A** pause/resume · **Clear** wipes the page · the **✕** on a row deletes one.
