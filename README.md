@@ -16,10 +16,27 @@ No Chrome extension. No MCP server. No account. Just CDP + one small JS overlay.
 
 ---
 
-## What it does
+## Why — your agent codes the UI blind. This gives it eyes.
 
-Open your app → click elements → type notes → your coding agent (Claude Code, Cursor, …) reads them as a
-markdown file and makes the changes → reload & check. That's the whole loop.
+You ask for a change, the agent writes code it can't see, you eyeball the browser and then type a
+paragraph describing what's off — *"the CTA is too big, move it left, wrong green"*. Slow, lossy, repeat.
+
+**bh-annotate closes the loop.** Point at the real UI, the agent fixes the real code.
+
+> ### "validate this feature on localhost:3000 in the browser"
+
+That one sentence runs the whole loop:
+
+1. **The agent ships it — and proves it.** Builds the change, opens the page, screenshots it, and checks it
+   actually renders + matches the ask. Says "done" only when it's real — no "should work" hand-waving.
+2. **You point, you don't type.** Annotations are already on: hover → click the thing → say what's wrong →
+   **Save**. Clicking *"smaller"* on the actual button beats a paragraph describing it. (**Copy** grabs every note as markdown.)
+3. **Back in the CLI, applied.** Write **"done"** — the agent fixes each pin, re-verifies in the browser, and
+   reports what changed. Loop until it's perfect.
+
+**The payoff:** your coding agent finally *sees what you see* — "looks wrong in the browser" becomes "fixed in the code" in one click. No extension, no MCP, no leaving your terminal.
+
+<sub>Overlay keys: Save = ⌘/Ctrl+Enter · Copy = notes→clipboard · Alt+A pause · Clear wipes · ✕ deletes one.</sub>
 
 ## Install
 
@@ -36,19 +53,6 @@ git clone https://github.com/kuzmany/bh-annotate && cd bh-annotate && ./install.
 ```
 
 **No install at all?** Paste `overlay/bh-annotate.js` into the DevTools console and annotate any page.
-
-## Use it — one sentence
-
-> **"validate this feature on localhost:3000 in the browser"**
-
-1. **Agent builds + self-verifies.** It makes the change, opens the page, screenshots it, and checks it
-   renders and matches the request — *only then* reports done. No broken hand-offs.
-2. **You review + annotate.** Annotations are already on: **hover → click → type a note → Save**.
-   (Or hit **Copy** to grab all notes as markdown.) Write **"done"** when finished.
-3. **Back to the CLI.** The agent reads your notes, applies each one, re-verifies in the browser, and tells
-   you what changed. Loop until you're happy.
-
-> Overlay: Save = ⌘/Ctrl+Enter · **Copy** = notes → clipboard · **Alt+A** pause · **Clear** wipes · **✕** deletes one.
 
 ## Commands (what the agent runs for you)
 
