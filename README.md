@@ -66,6 +66,16 @@ copy(JSON.stringify(window.__bhAnno.items, null, 2))   // annotations on your cl
 
 Or make it a **bookmarklet** — `javascript:(function(){…paste the file…})()` — and annotate any page with one click.
 
+## Use it as a Claude Code skill
+
+`install.sh` also drops a [Claude Code](https://claude.com/claude-code) skill into `~/.claude/skills/bh-annotate`,
+so the whole loop becomes one sentence — no commands to remember:
+
+> **"open localhost:3000 for comments"**
+
+Claude opens the page, injects the overlay, waits while you click + note, then runs `bh-apply`,
+reads your notes, edits the code, and reloads to verify. Say *"pull"* / *"done"* when you've finished marking up.
+
 ## Commands
 
 | Command | What it does |
