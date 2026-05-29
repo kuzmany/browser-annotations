@@ -162,19 +162,32 @@ class CDP:
             # else: event or other-session reply -> ignore
         raise RuntimeError(f"{method}: no reply after {timeout_msgs} messages")
 
-def pick_page(cdp, url_sub=None):
+def pick_page(cdp, url_sub=None, window_id=None):
     targets = cdp.call("Target.getTargets").get("targetInfos", [])
     pages = [t for t in targets if t.get("type") == "page"
              and not t.get("url", "").startswith(("devtools://", "chrome://", "chrome-extension://"))]
+    if not pages:
+        raise SystemExit("[cdp] no normal page open. open your app first.")
+    # pin page targets to a single Chrome window id (generic; e.g. auto-filled from $BH_SESSION_WINDOW_ID)
+    if window_id is not None:
+        in_win = []
+        for t in pages:
+            try:
+                if cdp.call("Browser.getWindowForTarget", {"targetId": t["targetId"]}).get("windowId") == window_id:
+                    in_win.append(t)
+            except Exception:
+                pass
+        if in_win:
+            pages = in_win
+        else:
+            print(f"[cdp] no page in window {window_id}; ignoring window filter", file=sys.stderr)
     if url_sub:
         match = [t for t in pages if url_sub in t.get("url", "")]
         if not match:
             raise SystemExit(f"[cdp] no open page matching --url {url_sub!r}. open it first.\n"
-                             f"      pages: " + ", ".join(p.get('url','')[:60] for p in pages) or "(none)")
+                             f"      pages: " + (", ".join(p.get('url', '')[:60] for p in pages) or "(none)"))
         page = match[-1]
     else:
-        if not pages:
-            raise SystemExit("[cdp] no normal page open. open your app first (or pass --url).")
         page = pages[-1]  # most recently created ≈ active
         if len(pages) > 1:
             print(f"[cdp] {len(pages)} pages open; using last: {page.get('url','')[:70]}  (use --url to pin)", file=sys.stderr)
@@ -197,7 +210,7 @@ def cmd_inject(args):
     ws_url = resolve_browser_ws(args.cdp)
     ws = WS(ws_url); cdp = CDP(ws)
     try:
-        sess, page_url = pick_page(cdp, args.url)
+        sess, page_url = pick_page(cdp, args.url, args.window)
         cdp.call("Page.enable", session=sess)
         idf = _idfile(ws_url, args.url)
         # remove our previous document-start registration (no stale duplicates on reload)
@@ -218,7 +231,7 @@ def cmd_pull(args):
     ws_url = resolve_browser_ws(args.cdp)
     ws = WS(ws_url); cdp = CDP(ws)
     try:
-        sess, _ = pick_page(cdp, args.url)
+        sess, _ = pick_page(cdp, args.url, args.window)
         raw = evaluate(cdp, sess, "JSON.stringify((window.__bhAnno&&window.__bhAnno.items)||[])")
         href = evaluate(cdp, sess, "location.href") or ""
     finally:
@@ -249,7 +262,7 @@ def cmd_shot(args):
     ws_url = resolve_browser_ws(args.cdp)
     ws = WS(ws_url, timeout=40); cdp = CDP(ws)
     try:
-        sess, url = pick_page(cdp, args.url)
+        sess, url = pick_page(cdp, args.url, args.window)
         cdp.call("Page.enable", session=sess)
         params = {"format": "png"}
         if args.full:
@@ -268,9 +281,12 @@ def cmd_shot(args):
 def main():
     p = argparse.ArgumentParser(prog="bh-cdp", add_help=True)
     sub = p.add_subparsers(dest="cmd", required=True)
-    pi = sub.add_parser("inject"); pi.add_argument("--js-file", required=True); pi.add_argument("--url"); pi.add_argument("--cdp")
-    pp = sub.add_parser("pull");   pp.add_argument("--url"); pp.add_argument("--cdp"); pp.add_argument("--json", action="store_true"); pp.add_argument("--out")
-    ps = sub.add_parser("shot");   ps.add_argument("--url"); ps.add_argument("--cdp"); ps.add_argument("--out"); ps.add_argument("--full", action="store_true")
+    ew = os.environ.get("BH_SESSION_WINDOW_ID", "").strip()
+    envwin = int(ew) if ew.isdigit() else None   # browser-harness's bh-open exports this; --window overrides
+    def add_window(sp): sp.add_argument("--window", type=int, default=envwin, help="pin to a Chrome window id")
+    pi = sub.add_parser("inject"); pi.add_argument("--js-file", required=True); pi.add_argument("--url"); pi.add_argument("--cdp"); add_window(pi)
+    pp = sub.add_parser("pull");   pp.add_argument("--url"); pp.add_argument("--cdp"); pp.add_argument("--json", action="store_true"); pp.add_argument("--out"); add_window(pp)
+    ps = sub.add_parser("shot");   ps.add_argument("--url"); ps.add_argument("--cdp"); ps.add_argument("--out"); ps.add_argument("--full", action="store_true"); add_window(ps)
     args = p.parse_args()
     {"inject": cmd_inject, "pull": cmd_pull, "shot": cmd_shot}[args.cmd](args)
 
