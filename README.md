@@ -58,11 +58,11 @@ git clone https://github.com/kuzmany/browser-annotations && cd browser-annotatio
 
 | Command (short alias) | Does |
 |---|---|
-| `browser-annotate` (`bh-annotate`) `[--url SUB]` | inject the overlay (annotations on; auto re-injects on reload) |
+| `browser-annotate` (`bh-annotate`) `[--open URL] [--url SUB]` | inject the overlay (annotations on; auto re-injects on reload). `--open URL` opens a fresh tab first — no browser-harness needed. |
 | `browser-apply` (`bh-apply`) `[--url SUB] [--json]` | export notes → `./.annotations/notes.md` |
 
 Endpoint: `--cdp` → `$CDP_URL` → `$BU_CDP_WS` → `http://localhost:9222`.
-`--url` pins a tab by URL; `--window ID` pins a Chrome window (auto-filled from `$BH_SESSION_WINDOW_ID`).
+`--url` pins a tab by URL; `--window ID` pins a Chrome window — auto-resolved from `$BH_SESSION_WINDOW_ID` or browser-harness's `~/.bh-session-windows.json` (keyed by `$BU_NAME`).
 
 Each note in `notes.md` carries a **unique CSS selector** + tag/text/box — so the agent edits the exact element, no guessing:
 
@@ -75,7 +75,7 @@ note: make this button green
 
 - Injects the overlay over CDP (browser WebSocket + flat session) — **CSP-safe**, survives reloads, pins persist (`localStorage`).
 - `lib/cdp.py` is ~190 lines, **stdlib only** (no pip deps); it also does `shot` (screenshots) for the agent's self-check.
-- Decoupled by design — works with any `--remote-debugging-port` Chrome; browser-harness just makes opening tabs nicer.
+- Self-contained — `--open <url>` creates+navigates its own tab over CDP, so it needs nothing but a `--remote-debugging-port` Chrome. When **browser-harness** is present it's used for nicer opening (right session window + domain-skills) and screenshots — but never required.
 
 ## License
 

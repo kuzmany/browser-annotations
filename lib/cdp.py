@@ -199,6 +199,47 @@ def evaluate(cdp, sess, expr, by_value=True, user_gesture=False):
                                       "userGesture": user_gesture, "awaitPromise": False}, session=sess)
     return r.get("result", {}).get("value")
 
+def wait_load(cdp, sess, timeout=15):
+    import time
+    for _ in range(timeout * 2):
+        try:
+            if evaluate(cdp, sess, "document.readyState") == "complete":
+                return
+        except Exception:
+            pass
+        time.sleep(0.5)
+
+def open_page(cdp, url):
+    """Create a new tab at url + attach to it — no browser-harness needed."""
+    tid = cdp.call("Target.createTarget", {"url": url}).get("targetId")
+    if not tid:
+        raise SystemExit("[cdp] Target.createTarget returned no targetId")
+    sess = cdp.call("Target.attachToTarget", {"targetId": tid, "flatten": True})["sessionId"]
+    cdp.call("Page.enable", session=sess)
+    wait_load(cdp, sess)
+    return sess
+
+def resolve_window():
+    """Pin to a Chrome window id: $BH_SESSION_WINDOW_ID, else browser-harness's
+    session-window map (~/.bh-session-windows.json keyed by $BU_NAME). None = no pin."""
+    v = os.environ.get("BH_SESSION_WINDOW_ID", "").strip()
+    if v.isdigit():
+        return int(v)
+    bu = os.environ.get("BU_NAME")
+    jf = os.environ.get("BH_WINDOWS_JSON") or os.path.expanduser("~/.bh-session-windows.json")
+    if bu and os.path.exists(jf):
+        try:
+            wid = json.load(open(jf)).get(bu)
+            if isinstance(wid, bool):
+                return None
+            if isinstance(wid, int):
+                return wid
+            if isinstance(wid, str) and wid.isdigit():
+                return int(wid)
+        except Exception:
+            pass
+    return None
+
 # ---------------- commands ----------------
 
 def _idfile(ws_url, url_sub):
@@ -210,9 +251,12 @@ def cmd_inject(args):
     ws_url = resolve_browser_ws(args.cdp)
     ws = WS(ws_url); cdp = CDP(ws)
     try:
-        sess, page_url = pick_page(cdp, args.url, args.window)
+        if getattr(args, "open", None):
+            sess = open_page(cdp, args.open); page_url = args.open
+        else:
+            sess, page_url = pick_page(cdp, args.url, args.window)
         cdp.call("Page.enable", session=sess)
-        idf = _idfile(ws_url, args.url)
+        idf = _idfile(ws_url, args.open or args.url)
         # remove our previous document-start registration (no stale duplicates on reload)
         if os.path.exists(idf):
             try: cdp.call("Page.removeScriptToEvaluateOnNewDocument", {"identifier": open(idf).read().strip()}, session=sess)
@@ -281,10 +325,9 @@ def cmd_shot(args):
 def main():
     p = argparse.ArgumentParser(prog="bh-cdp", add_help=True)
     sub = p.add_subparsers(dest="cmd", required=True)
-    ew = os.environ.get("BH_SESSION_WINDOW_ID", "").strip()
-    envwin = int(ew) if ew.isdigit() else None   # browser-harness's bh-open exports this; --window overrides
-    def add_window(sp): sp.add_argument("--window", type=int, default=envwin, help="pin to a Chrome window id")
-    pi = sub.add_parser("inject"); pi.add_argument("--js-file", required=True); pi.add_argument("--url"); pi.add_argument("--cdp"); add_window(pi)
+    win_default = resolve_window()   # $BH_SESSION_WINDOW_ID or ~/.bh-session-windows.json[$BU_NAME]; --window overrides
+    def add_window(sp): sp.add_argument("--window", type=int, default=win_default, help="pin to a Chrome window id")
+    pi = sub.add_parser("inject"); pi.add_argument("--js-file", required=True); pi.add_argument("--url"); pi.add_argument("--cdp"); pi.add_argument("--open", help="create+navigate a new tab to this URL, then inject"); add_window(pi)
     pp = sub.add_parser("pull");   pp.add_argument("--url"); pp.add_argument("--cdp"); pp.add_argument("--json", action="store_true"); pp.add_argument("--out"); add_window(pp)
     ps = sub.add_parser("shot");   ps.add_argument("--url"); ps.add_argument("--cdp"); ps.add_argument("--out"); ps.add_argument("--full", action="store_true"); add_window(ps)
     args = p.parse_args()

@@ -34,9 +34,14 @@ as part of validating in the browser): "do X, validate it in the browser", "do X
 
 1. **Make the change** the user asked for.
 
-2. **Open the page** in the CDP Chrome (start the dev server first if needed).
-   - browser-harness: `bh-open <url>`
-   - plain Chrome: open the tab in a `--remote-debugging-port=9222` Chrome.
+2. **Open the page** (start the dev server first if needed). **Prefer browser-harness when it's installed** — it
+   opens in the right session window (won't clobber the user's other tabs) and auto-loads domain-skills for known sites:
+   - `command -v bh-open` succeeds → **`bh-open <url>`**  ← preferred on a browser-harness rig
+   - otherwise → **`browser-annotate --open <url>`** opens a fresh tab + injects in one step (pure CDP, no browser-harness)
+   - or attach to a tab that's already open → `browser-annotate --url <substr>`
+
+   Session-safe targeting is automatic: the tool pins to the browser-harness session window
+   (`$BH_SESSION_WINDOW_ID` → `~/.bh-session-windows.json[$BU_NAME]`); otherwise pass `--url` to pin the right tab.
 
 3. **Self-verify BEFORE handing off (required).** Screenshot and actually look:
    ```bash
@@ -72,7 +77,7 @@ as part of validating in the browser): "do X, validate it in the browser", "do X
 
 | Command (alias) | Does |
 |---|---|
-| `browser-annotate` (`bh-annotate`) `[--url SUB] [--cdp URL]` | Inject the overlay into a Chrome tab over CDP (auto re-injects on reload; dedups its registration). |
+| `browser-annotate` (`bh-annotate`) `[--open URL] [--url SUB] [--cdp URL]` | Inject the overlay into a Chrome tab over CDP (auto re-injects on reload; dedups its registration). `--open URL` first creates+navigates a fresh tab (no browser-harness needed). |
 | `browser-apply` (`bh-apply`) `[--url SUB] [--cdp URL] [--out PATH] [--json]` | Export annotations → `./.annotations/notes.md` (or `--out` / `--json`). |
 
 In the overlay: hover highlights · click opens a note box · Save / ⌘Ctrl+Enter · Esc cancels · Alt+A pause/resume · Clear wipes · ✕ deletes one.

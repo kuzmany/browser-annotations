@@ -3,6 +3,7 @@
 # No browser-harness needed: talks straight to any Chrome started with
 # --remote-debugging-port. Auto re-injects on reload; dedups its registration.
 #
+#   browser-annotate --open http://localhost:3000   # open a fresh tab + inject (no browser-harness)
 #   browser-annotate                         # attach to the most recent page
 #   browser-annotate --url localhost:3000    # pin to a tab by URL substring
 #   browser-annotate --cdp http://localhost:9222
