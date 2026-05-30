@@ -23,12 +23,11 @@ import sys, os, json, base64, hashlib, struct, socket, ssl, urllib.request, re, 
 # ---------------- endpoint resolution ----------------
 
 def _bh_env_endpoint():
-    """Optional: if browser-harness is around, read its live BU_CDP_WS from .env
-    (kept fresh by bh-reconnect). Probed paths: $BH_CDP_ENV, $BH_REPO/.env,
-    ~/www/others/browser-harness/.env. Absent on non-harness machines → ignored."""
+    """Optional convenience: read a live BU_CDP_WS from a browser-harness .env
+    (kept fresh by bh-reconnect). Opt-in via env only — set $BH_CDP_ENV to the
+    .env path, or $BH_REPO to its repo dir. Unset on most machines → ignored."""
     cands = [os.environ.get("BH_CDP_ENV"),
-             os.path.join(os.environ["BH_REPO"], ".env") if os.environ.get("BH_REPO") else None,
-             os.path.expanduser("~/www/others/browser-harness/.env")]
+             os.path.join(os.environ["BH_REPO"], ".env") if os.environ.get("BH_REPO") else None]
     for p in cands:
         if not p or not os.path.exists(p):
             continue

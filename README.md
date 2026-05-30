@@ -54,6 +54,22 @@ git clone https://github.com/kuzmany/browser-annotations && cd browser-annotatio
 
 **No install at all?** Paste `overlay/bh-annotate.js` into the DevTools console and annotate any page.
 
+### Run it (works for everyone)
+
+The only requirement is **a Chrome with remote debugging on the same machine** as the command:
+
+```bash
+# 1. start Chrome with the debug port (fresh profile — Chrome 137+ blocks it on the default one)
+google-chrome --remote-debugging-port=9222 --user-data-dir=/tmp/cdp-chrome   # chrome.exe / "Google Chrome" on Win/Mac
+
+# 2. open a page + turn annotations on
+browser-annotate --open https://localhost:3000        # defaults to http://localhost:9222
+```
+
+**Cross-machine** (the CLI and Chrome are on different hosts — e.g. CLI in a VM, Chrome on your laptop)?
+Point it at the reachable endpoint: `--cdp ws://<host>:<port>/…`, or set `$CDP_URL` / `$BU_CDP_WS`
+(browser-harness users: set `$BH_CDP_ENV` to its `.env` and the live endpoint is auto-read).
+
 ## Commands (what the agent runs for you)
 
 | Command (short alias) | Does |
