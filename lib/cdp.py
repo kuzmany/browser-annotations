@@ -22,8 +22,28 @@ import sys, os, json, base64, hashlib, struct, socket, ssl, urllib.request, re, 
 
 # ---------------- endpoint resolution ----------------
 
+def _bh_env_endpoint():
+    """Optional: if browser-harness is around, read its live BU_CDP_WS from .env
+    (kept fresh by bh-reconnect). Probed paths: $BH_CDP_ENV, $BH_REPO/.env,
+    ~/www/others/browser-harness/.env. Absent on non-harness machines → ignored."""
+    cands = [os.environ.get("BH_CDP_ENV"),
+             os.path.join(os.environ["BH_REPO"], ".env") if os.environ.get("BH_REPO") else None,
+             os.path.expanduser("~/www/others/browser-harness/.env")]
+    for p in cands:
+        if not p or not os.path.exists(p):
+            continue
+        try:
+            for ln in open(p):
+                m = re.match(r"\s*BU_CDP_WS\s*=\s*(\S+)", ln)
+                if m:
+                    return m.group(1).strip().strip("\"'")
+        except Exception:
+            pass
+    return None
+
 def resolve_browser_ws(cdp_arg=None):
-    src = cdp_arg or os.environ.get("CDP_URL") or os.environ.get("BU_CDP_WS") or "http://localhost:9222"
+    src = (cdp_arg or os.environ.get("CDP_URL") or os.environ.get("BU_CDP_WS")
+           or _bh_env_endpoint() or "http://localhost:9222")
     if src.startswith("ws://") or src.startswith("wss://"):
         if "/devtools/browser/" in src:
             return src
