@@ -40,13 +40,14 @@ That one sentence runs the whole loop:
 
 ## Install
 
-**As a skill — any agent** (via [skills.sh](https://www.skills.sh)):
+**As a skill — any agent** (via [skills.sh](https://www.skills.sh)). **Self-contained** — the CDP client is
+bundled in the skill, so this alone is enough; the agent calls `python3 <skill-dir>/cdp.py` (needs only Python 3 + a debug Chrome):
 
 ```bash
 npx skills add kuzmany/browser-annotations   # Claude Code, Cursor, 50+ agents   (--agent '*' for all)
 ```
 
-**The CLI it calls** — Python 3 + a Chrome started with `--remote-debugging-port` (browser-harness optional):
+**Want the `browser-annotate` shell command** (for typing it yourself)? Run the installer:
 
 ```bash
 git clone https://github.com/kuzmany/browser-annotations && cd browser-annotations && ./install.sh

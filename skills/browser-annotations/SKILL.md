@@ -7,6 +7,20 @@ description: Visual feedback loop for a running web app — point at the UI in t
 
 > Commands: **`browser-annotate`** / **`browser-apply`** (short aliases **`bh-annotate`** / **`bh-apply`** also work).
 
+## Running it (CLI or bundled — no separate install needed)
+
+If the `browser-annotate` / `browser-apply` commands are on `$PATH` (the repo's `./install.sh` was run), use them.
+**If not** (this skill was added via `npx skills add` with no install) — the client is **bundled next to this file**.
+Let `D` = the directory of this `SKILL.md` (e.g. `~/.claude/skills/browser-annotations`) and call it directly:
+
+```bash
+python3 "$D/cdp.py" inject --js-file "$D/bh-annotate.js"  [--open URL | --url SUB] [--cdp URL]   # = browser-annotate
+python3 "$D/cdp.py" pull   [--url SUB] [--out PATH] [--json]                                     # = browser-apply
+python3 "$D/cdp.py" shot    --out F.png [--url SUB]                                              # screenshot
+```
+
+Only needs **Python 3** + a Chrome with `--remote-debugging-port` (default endpoint `http://localhost:9222`).
+
 Turn browser clicks + notes into code edits. The loop: **open → annotate → apply → verify**.
 Talks straight to Chrome over CDP — no extension, no MCP, no server.
 
@@ -98,5 +112,5 @@ box 95x36 @1466,1309 · color rgb(10,13,23) · bg rgb(255,90,54)
   loop keeps state. Applied notes stay until you **Clear** them.
 - **Remote Chrome:** a dead tunnel (`bh-status DEAD` on a browser-harness rig) means CDP is unreachable — fix
   the tunnel first; this tool uses the same transport, it doesn't add reliability.
-- **Standalone** (nothing installed): paste `overlay/bh-annotate.js` into DevTools, annotate, then
+- **Standalone** (nothing installed): paste `bh-annotate.js` (bundled next to this file) into DevTools, annotate, then
   `copy(JSON.stringify(window.__bhAnno.items, null, 2))`.
