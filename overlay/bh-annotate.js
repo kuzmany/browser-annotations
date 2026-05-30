@@ -1,14 +1,14 @@
-/* bh-annotate — visual web annotation overlay for AI coding workflows.
+/* browser-annotations — visual web annotation overlay for AI coding workflows.
  *
  * Click elements on a page, write notes; export them as markdown your AI
  * coding agent (Claude Code, etc.) can read and act on.
  *
  * Two ways to load it:
- *   1) browser-harness:  `bh-annotate` injects this via CDP (auto re-injects on reload).
+ *   1) browser-harness:  `browser-annotate` injects this via CDP (auto re-injects on reload).
  *   2) standalone:       paste this file into DevTools console, or use as a bookmarklet.
  *
  * No build step, no framework, CSP-safe (CDP eval world), idempotent.
- * Annotations persist in localStorage per path; read them back with `bh-apply`
+ * Annotations persist in localStorage per path; read them back with `browser-apply`
  * or `JSON.stringify(window.__bhAnno.items)`.
  *
  * State: window.__bhAnno = { items:[{id,selector,tag,text,note,rect,color,bg,ts}], ... }
@@ -16,7 +16,7 @@
  */
 (function () {
   var NS = "__bhAnno";
-  if (window[NS] && window[NS].ready) { try { window[NS].show(); } catch (e) {} return "bh-annotate: already loaded"; }
+  if (window[NS] && window[NS].ready) { try { window[NS].show(); } catch (e) {} return "browser-annotations: already loaded"; }
 
   var S = (window[NS] = { installed: true, ready: false, items: [], mode: true });
   var KEY = "bh-anno:" + location.pathname;
@@ -207,7 +207,7 @@
   }, true);
   window.addEventListener("scroll", layoutPins, true);
   window.addEventListener("resize", layoutPins);
-  // ---------- markdown export (same format as bh-apply) ----------
+  // ---------- markdown export (same format as browser-apply) ----------
   function toMarkdown() {
     var L = ["# Web annotations — " + S.items.length + " item(s)", "", "Source: " + location.href, ""];
     S.items.forEach(function (a) {
@@ -252,5 +252,5 @@
 
   S.ready = true;
   if (document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);
-  return "bh-annotate: loaded (" + S.items.length + " existing)";
+  return "browser-annotations: loaded (" + S.items.length + " existing)";
 })();

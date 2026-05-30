@@ -38,8 +38,6 @@ That one sentence runs the whole loop:
 
 <sub>Overlay keys: Save = ⌘/Ctrl+Enter · Copy = notes→clipboard · Alt+A pause · Clear wipes · ✕ deletes one.</sub>
 
-<div align="center"><img src="docs/loop.png" alt="The loop: agent ships & self-verifies → you point, not type → back in the CLI, applied → loop until perfect" width="760"></div>
-
 ## Install
 
 **As a skill — any agent** (via [skills.sh](https://www.skills.sh)):

@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# bh-annotate — inject the annotation overlay into a Chrome tab over CDP.
+# browser-annotate (alias: bh-annotate) — inject the annotation overlay into a Chrome tab over CDP.
 # No browser-harness needed: talks straight to any Chrome started with
 # --remote-debugging-port. Auto re-injects on reload; dedups its registration.
 #
-#   bh-annotate                         # attach to the most recent page
-#   bh-annotate --url localhost:3000    # pin to a tab by URL substring
-#   bh-annotate --cdp http://localhost:9222
+#   browser-annotate                         # attach to the most recent page
+#   browser-annotate --url localhost:3000    # pin to a tab by URL substring
+#   browser-annotate --cdp http://localhost:9222
 #
 # Endpoint:  --cdp  ->  $CDP_URL  ->  $BU_CDP_WS  ->  http://localhost:9222
-# Then mark up the page and export with `bh-apply`.
+# Then mark up the page and export with `browser-apply`.
 set -euo pipefail
 SELF_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 ROOT="$(cd "$SELF_DIR/.." && pwd)"
@@ -19,6 +19,6 @@ if [ -z "$JS_FILE" ]; then
         [ -f "$c" ] && JS_FILE="$c" && break
     done
 fi
-[ -f "$JS_FILE" ] || { echo "bh-annotate: overlay JS not found (set BH_ANNOTATE_JS)" >&2; exit 1; }
+[ -f "$JS_FILE" ] || { echo "browser-annotate: overlay JS not found (set BH_ANNOTATE_JS)" >&2; exit 1; }
 
 exec python3 "$ROOT/lib/cdp.py" inject --js-file "$JS_FILE" "$@"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Minimal, dependency-free Chrome DevTools Protocol client for bh-annotate.
+"""Minimal, dependency-free Chrome DevTools Protocol client for browser-annotations.
 
 Talks to any Chrome started with --remote-debugging-port over a single
 browser-level WebSocket using flat sessions (Target.attachToTarget flatten),
@@ -203,7 +203,7 @@ def evaluate(cdp, sess, expr, by_value=True, user_gesture=False):
 
 def _idfile(ws_url, url_sub):
     key = _h.sha1((ws_url.split("/devtools/")[0] + "|" + (url_sub or "")).encode()).hexdigest()[:12]
-    return f"/tmp/bh-annotate-{key}.id"
+    return f"/tmp/browser-annotate-{key}.id"
 
 def cmd_inject(args):
     js = open(args.js_file, encoding="utf-8").read()
@@ -221,9 +221,9 @@ def cmd_inject(args):
             ident = cdp.call("Page.addScriptToEvaluateOnNewDocument", {"source": js}, session=sess).get("identifier")
             if ident: open(idf, "w").write(str(ident))
         except Exception as e:
-            print(f"[bh-annotate] warn addScriptToEvaluateOnNewDocument: {e}", file=sys.stderr)
+            print(f"[browser-annotate] warn addScriptToEvaluateOnNewDocument: {e}", file=sys.stderr)
         val = evaluate(cdp, sess, js, user_gesture=True)
-        print(f"[bh-annotate] {val}  ({page_url[:60]})")
+        print(f"[browser-annotate] {val}  ({page_url[:60]})")
     finally:
         ws.close()
 
@@ -256,7 +256,7 @@ def cmd_pull(args):
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     open(out_path, "w", encoding="utf-8").write(out_text)
     print(out_text)
-    print(f"[bh-apply] saved -> {out_path}  ({len(items)} annotation(s))")
+    print(f"[browser-apply] saved -> {out_path}  ({len(items)} annotation(s))")
 
 def cmd_shot(args):
     ws_url = resolve_browser_ws(args.cdp)
