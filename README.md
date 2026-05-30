@@ -1,6 +1,6 @@
 <div align="center">
 
-# bh-annotate
+# browser-annotations
 
 **Point at your UI in the browser, type what to change — your AI agent reads it and edits the code.**
 
@@ -10,7 +10,7 @@ No Chrome extension. No MCP server. No account. Just CDP + one small JS overlay.
 ![Shell + Python](https://img.shields.io/badge/bash%20+%20python3-555.svg)
 ![Works with](https://img.shields.io/badge/works%20with-Claude%20Code%20·%20Cursor%20·%20Codex-FF5A36.svg)
 
-<img src="docs/demo.png" alt="bh-annotate: numbered pins on a live page + the annotations panel" width="820">
+<img src="docs/demo.png" alt="browser-annotations: numbered pins on a live page + the annotations panel" width="820">
 
 </div>
 
@@ -21,7 +21,7 @@ No Chrome extension. No MCP server. No account. Just CDP + one small JS overlay.
 You ask for a change, the agent writes code it can't see, you eyeball the browser and then type a
 paragraph describing what's off — *"the CTA is too big, move it left, wrong green"*. Slow, lossy, repeat.
 
-**bh-annotate closes the loop.** Point at the real UI, the agent fixes the real code.
+**browser-annotations closes the loop.** Point at the real UI, the agent fixes the real code.
 
 > ### "validate this feature on localhost:3000 in the browser"
 
@@ -38,28 +38,30 @@ That one sentence runs the whole loop:
 
 <sub>Overlay keys: Save = ⌘/Ctrl+Enter · Copy = notes→clipboard · Alt+A pause · Clear wipes · ✕ deletes one.</sub>
 
+<div align="center"><img src="docs/loop.png" alt="The loop: agent ships & self-verifies → you point, not type → back in the CLI, applied → loop until perfect" width="760"></div>
+
 ## Install
 
 **As a skill — any agent** (via [skills.sh](https://www.skills.sh)):
 
 ```bash
-npx skills add kuzmany/bh-annotate          # Claude Code, Cursor, 50+ agents   (--agent '*' for all)
+npx skills add kuzmany/browser-annotations   # Claude Code, Cursor, 50+ agents   (--agent '*' for all)
 ```
 
 **The CLI it calls** — Python 3 + a Chrome started with `--remote-debugging-port` (browser-harness optional):
 
 ```bash
-git clone https://github.com/kuzmany/bh-annotate && cd bh-annotate && ./install.sh
+git clone https://github.com/kuzmany/browser-annotations && cd browser-annotations && ./install.sh
 ```
 
 **No install at all?** Paste `overlay/bh-annotate.js` into the DevTools console and annotate any page.
 
 ## Commands (what the agent runs for you)
 
-| Command | Does |
+| Command (short alias) | Does |
 |---|---|
-| `bh-annotate [--url SUB]` | inject the overlay (annotations on; auto re-injects on reload) |
-| `bh-apply [--url SUB] [--json]` | export notes → `./.annotations/notes.md` |
+| `browser-annotate` (`bh-annotate`) `[--url SUB]` | inject the overlay (annotations on; auto re-injects on reload) |
+| `browser-apply` (`bh-apply`) `[--url SUB] [--json]` | export notes → `./.annotations/notes.md` |
 
 Endpoint: `--cdp` → `$CDP_URL` → `$BU_CDP_WS` → `http://localhost:9222`.
 `--url` pins a tab by URL; `--window ID` pins a Chrome window (auto-filled from `$BH_SESSION_WINDOW_ID`).

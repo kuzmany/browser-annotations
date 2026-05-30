@@ -106,7 +106,7 @@
   ph.appendChild(el("span", { class: "sp" })); ph.appendChild(bCopy); ph.appendChild(bMode); ph.appendChild(bClear);
   var list = el("div", { id: "bh-list" });
   var foot = el("div", { class: "f" });
-  var fLeft = document.createElement("span"); fLeft.textContent = "apply: bh-apply";
+  var fLeft = document.createElement("span"); fLeft.textContent = "apply: browser-apply";
   var fRight = document.createElement("span"); fRight.textContent = "⌥A toggle";
   foot.appendChild(fLeft); foot.appendChild(fRight);
   panel.appendChild(ph); panel.appendChild(list); panel.appendChild(foot);

@@ -1,9 +1,11 @@
 ---
-name: bh-annotate
-description: Visual feedback loop for a running web app — point at the UI in the browser, get the changes in code. Use when the user says "open <url> for comments", "annotate the page", "let me comment on the UI", "review the design in the browser", "mark up localhost:3000", "I'll click what to change", or otherwise wants to click elements in a live page and have those notes applied to the code. Uses a page in a Chrome started with --remote-debugging-port, injects the annotation overlay, waits for the user to click elements + type notes, then reads the notes (bh-apply) and implements them, and verifies in the browser. Needs Python 3 and a CDP-enabled Chrome; browser-harness is optional (only for bh-open convenience).
+name: browser-annotations
+description: Visual feedback loop for a running web app — point at the UI in the browser, get the changes in code. Use when the user says "open <url> for comments", "validate this feature in the browser", "annotate the page", "let me comment on the UI", "review the design in the browser", "mark up localhost:3000", "I'll click what to change", or otherwise wants to click elements in a live page and have those notes applied to the code. Uses a page in a Chrome started with --remote-debugging-port, injects the annotation overlay, waits for the user to click elements + type notes, then reads the notes (browser-apply) and implements them, and verifies in the browser. Needs Python 3 and a CDP-enabled Chrome; browser-harness is optional (only for bh-open convenience).
 ---
 
-# bh-annotate — point at the UI, get the changes
+# browser-annotations — point at the UI, get the changes
+
+> Commands: **`browser-annotate`** / **`browser-apply`** (short aliases **`bh-annotate`** / **`bh-apply`** also work).
 
 Turn browser clicks + notes into code edits. The loop: **open → annotate → apply → verify**.
 Talks straight to Chrome over CDP — no extension, no MCP, no server.
@@ -15,7 +17,7 @@ e.g. "open localhost:3000 for comments", "let me mark what to change", "review t
 
 ## Endpoint
 
-`bh-annotate` / `bh-apply` resolve the Chrome CDP endpoint in this order:
+`browser-annotate` / `browser-apply` resolve the Chrome CDP endpoint in this order:
 `--cdp <url>` → `$CDP_URL` → `$BU_CDP_WS` → `http://localhost:9222`.
 
 - Plain Chrome: launch with `--remote-debugging-port=9222` → the default works.
@@ -47,7 +49,7 @@ as part of validating in the browser): "do X, validate it in the browser", "do X
 
 4. **Enable annotations + announce.** Inject the overlay and hand off explicitly:
    ```bash
-   bh-annotate --url <substr>     # --url pins the tab; annotations now ON
+   browser-annotate --url <substr>     # alias: bh-annotate · --url pins the tab; annotations now ON
    ```
    > ✅ Done & verified from my side. Annotate at `<url>`: hover → click → note → **Save** (⌘/Ctrl+Enter). **Alt+A** pause, **Clear** wipes. Write **"done"** when finished.
 
@@ -56,7 +58,7 @@ as part of validating in the browser): "do X, validate it in the browser", "do X
 
 5. **Apply.** When the user writes **"done"** (or "pull"):
    ```bash
-   bh-apply --url <substr>        # writes ./.annotations/notes.md (+ prints it)
+   browser-apply --url <substr>        # alias: bh-apply · writes ./.annotations/notes.md (+ prints it)
    ```
    Read `./.annotations/notes.md` and implement each annotation. Every note carries a **unique CSS selector**,
    the element's tag + text, and its box/colors — locate the exact element, no guessing.
@@ -68,10 +70,10 @@ as part of validating in the browser): "do X, validate it in the browser", "do X
 
 ## Commands
 
-| Command | Does |
+| Command (alias) | Does |
 |---|---|
-| `bh-annotate [--url SUB] [--cdp URL]` | Inject the overlay into a Chrome tab over CDP (auto re-injects on reload; dedups its registration). |
-| `bh-apply [--url SUB] [--cdp URL] [--out PATH] [--json]` | Export annotations → `./.annotations/notes.md` (or `--out` / `--json`). |
+| `browser-annotate` (`bh-annotate`) `[--url SUB] [--cdp URL]` | Inject the overlay into a Chrome tab over CDP (auto re-injects on reload; dedups its registration). |
+| `browser-apply` (`bh-apply`) `[--url SUB] [--cdp URL] [--out PATH] [--json]` | Export annotations → `./.annotations/notes.md` (or `--out` / `--json`). |
 
 In the overlay: hover highlights · click opens a note box · Save / ⌘Ctrl+Enter · Esc cancels · Alt+A pause/resume · Clear wipes · ✕ deletes one.
 
