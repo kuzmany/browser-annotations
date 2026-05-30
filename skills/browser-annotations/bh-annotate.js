@@ -4,7 +4,7 @@
  * coding agent (Claude Code, etc.) can read and act on.
  *
  * Two ways to load it:
- *   1) browser-harness:  `browser-annotate` injects this via CDP (auto re-injects on reload).
+ *   1) browser-annotate CLI: injects this via CDP (re-injects on reload only while a debugger stays attached; one-shot CLI → re-run after a hard reload).
  *   2) standalone:       paste this file into DevTools console, or use as a bookmarklet.
  *
  * No build step, no framework, CSP-safe (CDP eval world), idempotent.

@@ -72,8 +72,8 @@ as part of validating in the browser): "do X, validate it in the browser", "do X
    ```
    > ✅ Done & verified from my side. Annotate at `<url>`: hover → click → note → **Save** (⌘/Ctrl+Enter). **Alt+A** pause, **Clear** wipes. Write **"done"** when finished.
 
-   Then **STOP and wait** — do not poll, do not move/close/reopen the tab. Overlay + pins persist at that URL
-   across reloads (localStorage per path), so the page stays ready while the user clicks.
+   Then **STOP and wait** — do not poll, do not move/close/reopen the tab. The overlay stays live while the
+   user clicks (don't reload the page during this). Pins + notes are saved in `localStorage` per URL.
 
 5. **Apply.** When the user writes **"done"** (or "pull"):
    ```bash
@@ -85,13 +85,15 @@ as part of validating in the browser): "do X, validate it in the browser", "do X
 6. **Self-verify AFTER applying (required).** Reload, screenshot again, and check **each note was addressed and
    still matches the original instructions**. If a note isn't satisfied → fix and re-verify. Then **report to the
    user**: a short per-note summary (done / how) + that it's verified. Clear resolved annotations (overlay
-   **Clear** / `window.__bhAnno.clear()`) so they don't reappear, and offer another round.
+   **Clear** / `window.__bhAnno.clear()`) so they don't reappear. For another round, **re-run
+   `browser-annotate --url <substr>`** — a page reload drops the overlay UI (it reloads saved pins from
+   `localStorage`) — then hand off again.
 
 ## Commands
 
 | Command (alias) | Does |
 |---|---|
-| `browser-annotate` (`bh-annotate`) `[--open URL] [--url SUB] [--cdp URL]` | Inject the overlay into a Chrome tab over CDP (auto re-injects on reload; dedups its registration). `--open URL` first creates+navigates a fresh tab (no browser-harness needed). |
+| `browser-annotate` (`bh-annotate`) `[--open URL] [--url SUB] [--cdp URL]` | Inject the overlay into a Chrome tab over CDP. `--open URL` creates+navigates a fresh tab — and **launches Chrome itself if none is on `--remote-debugging-port`** (no browser-harness needed). |
 | `browser-apply` (`bh-apply`) `[--url SUB] [--cdp URL] [--out PATH] [--json]` | Export annotations → `./.annotations/notes.md` (or `--out` / `--json`). |
 
 In the overlay: hover highlights · click opens a note box · Save / ⌘Ctrl+Enter · Esc cancels · Alt+A pause/resume · Clear wipes · ✕ deletes one.
@@ -108,8 +110,10 @@ box 95x36 @1466,1309 · color rgb(10,13,23) · bg rgb(255,90,54)
 
 - **Which tab:** without a session manager the tool attaches to the most-recent matching page. If several
   tabs are open, always pass `--url <substr>` to pin the right one.
-- **Persistence:** annotations live in `localStorage` per URL path and the overlay re-injects on reload, so the
-  loop keeps state. Applied notes stay until you **Clear** them.
+- **Persistence:** annotations live in `localStorage` per URL path, so they survive reloads. The overlay **UI**
+  does *not* survive a hard reload with the one-shot CLI (the CDP `addScriptToEvaluateOnNewDocument` registration
+  is cleared when the command disconnects) — just **re-run `browser-annotate`** after a reload and the pins reload
+  from `localStorage`. (A persistent browser-harness session keeps it injected across reloads automatically.)
 - **Remote Chrome:** a dead tunnel (`bh-status DEAD` on a browser-harness rig) means CDP is unreachable — fix
   the tunnel first; this tool uses the same transport, it doesn't add reliability.
 - **Standalone** (nothing installed): paste `bh-annotate.js` (bundled next to this file) into DevTools, annotate, then

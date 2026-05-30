@@ -19,8 +19,61 @@ Stdlib only (socket, ssl, json, base64, hashlib, os, struct, urllib).
 MIT License.
 """
 import sys, os, json, base64, hashlib, struct, socket, ssl, urllib.request, re, argparse, hashlib as _h
+import time, shutil, subprocess, platform
 
 # ---------------- endpoint resolution ----------------
+
+def _port_of(http_base):
+    m = re.search(r":(\d+)", http_base)
+    return int(m.group(1)) if m else 9222
+
+def _find_chrome():
+    if os.environ.get("CHROME"):
+        return os.environ["CHROME"]
+    for n in ("google-chrome", "google-chrome-stable", "chromium", "chromium-browser", "chrome", "brave-browser"):
+        p = shutil.which(n)
+        if p:
+            return p
+    for p in ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+              r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+              r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"):
+        if os.path.exists(p):
+            return p
+    return None
+
+def _launch_chrome(port=9222):
+    """No debug Chrome found → start one ourselves (detached, persists after this CLI exits)."""
+    chrome = _find_chrome()
+    if not chrome:
+        raise SystemExit("[cdp] no Chrome found. Install Chrome, or start one with "
+                         "--remote-debugging-port and pass --cdp.")
+    prof = os.path.expanduser("~/.browser-annotations/chrome")
+    os.makedirs(prof, exist_ok=True)
+    for lk in ("SingletonLock", "SingletonCookie", "SingletonSocket"):
+        try: os.remove(os.path.join(prof, lk))
+        except OSError: pass
+    args = [chrome, "--remote-debugging-port=%d" % port, "--user-data-dir=" + prof,
+            "--no-first-run", "--no-default-browser-check", "--remote-allow-origins=*"]
+    headless = bool(os.environ.get("BROWSER_ANNOTATIONS_HEADLESS")) or \
+               (platform.system() == "Linux" and not os.environ.get("DISPLAY"))
+    if headless:
+        args += ["--headless=new", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage",
+                 "--use-gl=angle", "--use-angle=swiftshader", "--window-size=1440,900"]
+    print("[cdp] no debug Chrome on :%d → launching %sChrome…" % (port, "headless " if headless else ""), file=sys.stderr)
+    log = open(os.path.expanduser("~/.browser-annotations/chrome.log"), "ab")
+    kw = {"stdout": log, "stderr": log, "stdin": subprocess.DEVNULL}
+    if hasattr(subprocess, "CREATE_NEW_PROCESS_GROUP") and os.name == "nt":
+        kw["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+    else:
+        kw["start_new_session"] = True
+    subprocess.Popen(args, **kw)
+    for _ in range(60):
+        try:
+            with urllib.request.urlopen("http://localhost:%d/json/version" % port, timeout=2) as r:
+                return json.loads(r.read().decode())["webSocketDebuggerUrl"]
+        except Exception:
+            time.sleep(0.5)
+    raise SystemExit("[cdp] launched Chrome but :%d never came up (see ~/.browser-annotations/chrome.log)" % port)
 
 def _bh_env_endpoint():
     """Optional convenience: read a live BU_CDP_WS from a browser-harness .env
@@ -41,30 +94,32 @@ def _bh_env_endpoint():
     return None
 
 def resolve_browser_ws(cdp_arg=None):
-    src = (cdp_arg or os.environ.get("CDP_URL") or os.environ.get("BU_CDP_WS")
-           or _bh_env_endpoint() or "http://localhost:9222")
+    explicit = cdp_arg or os.environ.get("CDP_URL") or os.environ.get("BU_CDP_WS") or _bh_env_endpoint()
+    src = explicit or "http://localhost:9222"
+    auto = explicit is None   # only auto-launch a local Chrome when falling back to the default endpoint
     if src.startswith("ws://") or src.startswith("wss://"):
         if "/devtools/browser/" in src:
             return src
         # ws://host:port with no browser path -> derive http base and query
         http = "http://" + src.split("://", 1)[1].rstrip("/")
-        return _ws_from_version(http)
+        return _ws_from_version(http, auto)
     if src.startswith("http://") or src.startswith("https://"):
-        return _ws_from_version(src.rstrip("/"))
+        return _ws_from_version(src.rstrip("/"), auto)
     # bare host:port
-    return _ws_from_version("http://" + src.rstrip("/"))
+    return _ws_from_version("http://" + src.rstrip("/"), auto)
 
-def _ws_from_version(http_base):
+def _ws_from_version(http_base, launch_on_fail=False):
     try:
         with urllib.request.urlopen(http_base + "/json/version", timeout=6) as r:
-            data = json.loads(r.read().decode())
-        ws = data.get("webSocketDebuggerUrl")
-        if not ws:
-            raise RuntimeError("no webSocketDebuggerUrl in /json/version")
-        return ws
-    except Exception as e:
-        raise SystemExit(f"[cdp] cannot reach Chrome at {http_base}/json/version : {e}\n"
-                         f"      start Chrome with --remote-debugging-port, or set --cdp / $CDP_URL / $BU_CDP_WS")
+            ws = json.loads(r.read().decode()).get("webSocketDebuggerUrl")
+        if ws:
+            return ws
+    except Exception:
+        pass
+    if launch_on_fail:            # no debug Chrome on localhost:9222 → start one ourselves
+        return _launch_chrome(_port_of(http_base))
+    raise SystemExit(f"[cdp] cannot reach Chrome at {http_base}/json/version\n"
+                     f"      start Chrome with --remote-debugging-port, or pass --cdp / $CDP_URL")
 
 # ---------------- tiny RFC6455 websocket client ----------------
 

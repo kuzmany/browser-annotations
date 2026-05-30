@@ -55,27 +55,25 @@ git clone https://github.com/kuzmany/browser-annotations && cd browser-annotatio
 
 **No install at all?** Paste `overlay/bh-annotate.js` into the DevTools console and annotate any page.
 
-### Run it (works for everyone)
-
-The only requirement is **a Chrome with remote debugging on the same machine** as the command:
+### Run it — one command, zero setup
 
 ```bash
-# 1. start Chrome with the debug port (fresh profile — Chrome 137+ blocks it on the default one)
-google-chrome --remote-debugging-port=9222 --user-data-dir=/tmp/cdp-chrome   # chrome.exe / "Google Chrome" on Win/Mac
-
-# 2. open a page + turn annotations on
-browser-annotate --open https://localhost:3000        # defaults to http://localhost:9222
+browser-annotate --open https://localhost:3000
 ```
 
-**Cross-machine** (the CLI and Chrome are on different hosts — e.g. CLI in a VM, Chrome on your laptop)?
-Point it at the reachable endpoint: `--cdp ws://<host>:<port>/…`, or set `$CDP_URL` / `$BU_CDP_WS`
-(browser-harness users: set `$BH_CDP_ENV` to its `.env` and the live endpoint is auto-read).
+That's it. If no debug Chrome is running, it **launches one for you** (its own profile in
+`~/.browser-annotations/chrome`), opens the page, and turns annotations on. Already have a Chrome on
+`--remote-debugging-port`? It attaches to that instead. Set `$CHROME` to pick a specific binary.
+
+**Cross-machine** (CLI and Chrome on different hosts — e.g. CLI in a VM, Chrome on your laptop)? Point it
+at the reachable endpoint: `--cdp ws://<host>:<port>/…` or `$CDP_URL` / `$BU_CDP_WS`
+(browser-harness users: `$BH_CDP_ENV` → its `.env`, live endpoint auto-read).
 
 ## Commands (what the agent runs for you)
 
 | Command (short alias) | Does |
 |---|---|
-| `browser-annotate` (`bh-annotate`) `[--open URL] [--url SUB]` | inject the overlay (annotations on; auto re-injects on reload). `--open URL` opens a fresh tab first — no browser-harness needed. |
+| `browser-annotate` (`bh-annotate`) `[--open URL] [--url SUB]` | inject the overlay (annotations on). `--open URL` opens a fresh tab first (or launches Chrome if none is running) — no browser-harness needed. |
 | `browser-apply` (`bh-apply`) `[--url SUB] [--json]` | export notes → `./.annotations/notes.md` |
 
 Endpoint: `--cdp` → `$CDP_URL` → `$BU_CDP_WS` → `http://localhost:9222`.
@@ -90,7 +88,7 @@ note: make this button green
 
 ## How it works
 
-- Injects the overlay over CDP (browser WebSocket + flat session) — **CSP-safe**, survives reloads, pins persist (`localStorage`).
+- Injects the overlay over CDP (browser WebSocket + flat session) — **CSP-safe**. Your pins + notes persist in `localStorage`; after a hard page reload just re-run `browser-annotate` to bring the overlay back (it reloads your pins).
 - `lib/cdp.py` is ~190 lines, **stdlib only** (no pip deps); it also does `shot` (screenshots) for the agent's self-check.
 - Self-contained — `--open <url>` creates+navigates its own tab over CDP, so it needs nothing but a `--remote-debugging-port` Chrome. When **browser-harness** is present it's used for nicer opening (right session window + domain-skills) and screenshots — but never required.
 
