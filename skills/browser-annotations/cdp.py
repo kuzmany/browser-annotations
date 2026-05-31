@@ -134,6 +134,12 @@ class WS:
         if scheme == "wss":
             self.sock = ssl.create_default_context().wrap_socket(self.sock, server_hostname=host)
         self.sock.settimeout(timeout)
+        # Disable Nagle: a coalesced large burst is silently dropped by some
+        # userspace TCP proxies (e.g. Tailscale `serve --tcp`) in front of Chrome.
+        try:
+            self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        except Exception:
+            pass
         key = base64.b64encode(os.urandom(16)).decode()
         req = (f"GET {path} HTTP/1.1\r\nHost: {host}:{port}\r\nUpgrade: websocket\r\n"
                f"Connection: Upgrade\r\nSec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n")
@@ -173,7 +179,17 @@ class WS:
             hdr += bytes([0x80 | 126]) + struct.pack(">H", n)
         else:
             hdr += bytes([0x80 | 127]) + struct.pack(">Q", n)
-        self.sock.sendall(hdr + mask + masked)
+        frame = hdr + mask + masked
+        # Small frames (nearly all CDP commands) go in one write. Large ones
+        # (e.g. injecting the overlay) are chunked + lightly paced so a userspace
+        # TCP proxy in front of Chrome can't drop a single big burst.
+        if len(frame) <= 1024:
+            self.sock.sendall(frame)
+            return
+        import time as _t
+        for i in range(0, len(frame), 1024):
+            self.sock.sendall(frame[i:i + 1024])
+            _t.sleep(0.001)
 
     def recv(self):
         # returns the next complete TEXT message (handles fragmentation + control frames)
