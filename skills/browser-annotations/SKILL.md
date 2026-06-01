@@ -7,11 +7,10 @@ description: Visual feedback loop for a running web app — point at the UI in t
 
 > Commands: **`browser-annotate`** / **`browser-apply`** (short aliases **`bh-annotate`** / **`bh-apply`** also work).
 
-## Running it (CLI or bundled — no separate install needed)
+## Running it (bundled — nothing to install)
 
-If the `browser-annotate` / `browser-apply` commands are on `$PATH` (the repo's `./install.sh` was run), use them.
-**If not** (this skill was added via `npx skills add` with no install) — the client is **bundled next to this file**.
-Let `D` = the directory of this `SKILL.md` (e.g. `~/.claude/skills/browser-annotations`) and call it directly:
+The CDP client + overlay are **bundled next to this file**. Let `D` = the directory of this `SKILL.md`
+(e.g. `~/.claude/skills/browser-annotations`) and call it directly:
 
 ```bash
 python3 "$D/cdp.py" inject --js-file "$D/bh-annotate.js"  [--open URL | --url SUB] [--cdp URL]   # = browser-annotate
@@ -19,7 +18,20 @@ python3 "$D/cdp.py" pull   [--url SUB] [--out PATH] [--json]                    
 python3 "$D/cdp.py" shot    --out F.png [--url SUB]                                              # screenshot
 ```
 
-Only needs **Python 3** + a Chrome with `--remote-debugging-port` (default endpoint `http://localhost:9222`).
+Only needs **Python 3** + a Chrome with `--remote-debugging-port` (default `http://localhost:9222`; if none is
+running, `--open` **launches one for you**). The loop below writes `browser-annotate` / `browser-apply` for
+brevity — they mean exactly `python3 "$D/cdp.py" inject --js-file "$D/bh-annotate.js"` / `python3 "$D/cdp.py" pull`
+(`inject` requires `--js-file`; the shorthand bakes it in). Use whichever resolves on `$PATH`.
+
+## On by default
+
+Displaying annotations is the default once this skill is installed — never ask the user to "enable" it:
+
+- **You (the agent)** inject the overlay whenever you open a page for review — the loop below does this.
+- **If the user's browser-harness `bh-open` has the auto-display hook** (it registers the overlay with
+  `window.__bhAnnoStartMode=false` before navigating), pages that already have saved annotations auto-show them
+  *passively* (pins visible, clicks pass through — won't disrupt automation), surviving reloads. When you hand
+  off for **new** annotation, run `browser-annotate` — it flips the overlay to **active** (interactive capture).
 
 Turn browser clicks + notes into code edits. The loop: **open → annotate → apply → verify**.
 Talks straight to Chrome over CDP — no extension, no MCP, no server.
@@ -61,7 +73,7 @@ as part of validating in the browser): "do X, validate it in the browser", "do X
    ```bash
    bh-shot /tmp/v.png 1600                                  # browser-harness, auto-resizes
    # or, no browser-harness:
-   python3 <repo>/lib/cdp.py shot --url <substr> --out /tmp/v.png
+   python3 "$D/cdp.py" shot --url <substr> --out /tmp/v.png
    ```
    Read the image. Confirm: the page renders, no errors, and **your change is visibly present and matches the
    instruction**. If not → fix and re-verify. Only continue once it's genuinely OK *for you*.

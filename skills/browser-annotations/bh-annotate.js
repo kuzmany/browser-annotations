@@ -18,7 +18,10 @@
   var NS = "__bhAnno";
   if (window[NS] && window[NS].ready) { try { window[NS].show(); } catch (e) {} return "browser-annotations: already loaded"; }
 
-  var S = (window[NS] = { installed: true, ready: false, items: [], mode: true });
+  // mode: true = interactive (hover+click capture). Auto-display (bh-open) sets
+  // window.__bhAnnoStartMode=false to start passive — pins show, clicks pass through.
+  var S = (window[NS] = { installed: true, ready: false, items: [],
+    mode: (typeof window.__bhAnnoStartMode === "boolean" ? window.__bhAnnoStartMode : true) });
   var KEY = "bh-anno:" + location.pathname;
   try { var saved = localStorage.getItem(KEY); if (saved) S.items = JSON.parse(saved) || []; } catch (e) {}
   var seq = S.items.reduce(function (m, a) { return Math.max(m, a.id || 0); }, 0);
@@ -200,11 +203,12 @@
   // ---------- wiring ----------
   document.addEventListener("mousemove", onMove, true);
   document.addEventListener("click", onClick, true);
-  document.addEventListener("keydown", function (e) {
+  function onKey(e) {
     if (e.key === "Escape" && input.style.display === "block") cancel();
     if (e.altKey && (e.key === "a" || e.key === "A")) { S.mode = !S.mode; render(); }
     if (input.style.display === "block" && (e.metaKey || e.ctrlKey) && e.key === "Enter") commit();
-  }, true);
+  }
+  document.addEventListener("keydown", onKey, true);
   window.addEventListener("scroll", layoutPins, true);
   window.addEventListener("resize", layoutPins);
   // ---------- markdown export (same format as browser-apply) ----------
@@ -249,6 +253,22 @@
   S.dump = function () { return S.items; };
   S.markdown = toMarkdown;
   S.clear = function () { S.items = []; save(); render(); };
+  // Flip from passive display to interactive capture (explicit browser-annotate calls this).
+  S.activate = function () { S.mode = true; render(); };
+  // Full teardown — clean removal (drop all nodes + listeners + window.__bhAnno) for any caller.
+  S.destroy = function () {
+    try {
+      document.removeEventListener("mousemove", onMove, true);
+      document.removeEventListener("click", onClick, true);
+      document.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("scroll", layoutPins, true);
+      window.removeEventListener("resize", layoutPins);
+      [st, hl, input, panel, pinLayer].forEach(function (n) { if (n && n.parentNode) n.parentNode.removeChild(n); });
+    } catch (e) {}
+    S.ready = false;
+    try { delete window[NS]; } catch (e) { window[NS] = undefined; }
+    return "browser-annotations: removed";
+  };
 
   S.ready = true;
   if (document.body) mount(); else document.addEventListener("DOMContentLoaded", mount);

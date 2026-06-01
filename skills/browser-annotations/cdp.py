@@ -357,6 +357,9 @@ def cmd_inject(args):
         except Exception as e:
             print(f"[browser-annotate] warn addScriptToEvaluateOnNewDocument: {e}", file=sys.stderr)
         val = evaluate(cdp, sess, js, user_gesture=True)
+        # explicit inject = interactive: flip to active even if the page was auto-loaded passive
+        try: evaluate(cdp, sess, "window.__bhAnno&&window.__bhAnno.activate&&window.__bhAnno.activate()")
+        except Exception: pass
         print(f"[browser-annotate] {val}  ({page_url[:60]})")
     finally:
         ws.close()

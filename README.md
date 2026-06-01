@@ -2,12 +2,12 @@
 
 # browser-annotations
 
-**Point at your UI in the browser, type what to change — your AI agent reads it and edits the code.**
+**Point at your UI in the browser, type what to change — your AI coding agent reads it and edits the code.**
 
-No Chrome extension. No MCP server. No account. Just CDP + one small JS overlay.
+No Chrome extension. No MCP server. No account. One skill, installed once.
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-FF5A36.svg)
-![Shell + Python](https://img.shields.io/badge/bash%20+%20python3-555.svg)
+![python3](https://img.shields.io/badge/python3-555.svg)
 ![Works with](https://img.shields.io/badge/works%20with-Claude%20Code%20·%20Cursor%20·%20Codex-FF5A36.svg)
 
 <img src="docs/demo.png" alt="browser-annotations: numbered pins on a live page + the annotations panel" width="820">
@@ -19,7 +19,7 @@ No Chrome extension. No MCP server. No account. Just CDP + one small JS overlay.
 ## Why — your agent codes the UI blind. This gives it eyes.
 
 You ask for a change, the agent writes code it can't see, you eyeball the browser and then type a
-paragraph describing what's off — *"the CTA is too big, move it left, wrong green"*. Slow, lossy, repeat.
+paragraph describing what's off — *"the CTA is too big, move it left, wrong green."* Slow, lossy, repeat.
 
 **browser-annotations closes the loop.** Point at the real UI, the agent fixes the real code.
 
@@ -27,59 +27,85 @@ paragraph describing what's off — *"the CTA is too big, move it left, wrong gr
 
 That one sentence runs the whole loop:
 
-1. **The agent ships it — and proves it.** Builds the change, opens the page, screenshots it, and checks it
+1. **The agent ships it — and proves it.** Builds the change, opens the page, screenshots it, checks it
    actually renders + matches the ask. Says "done" only when it's real — no "should work" hand-waving.
 2. **You point, you don't type.** Annotations are already on: hover → click the thing → say what's wrong →
    **Save**. Clicking *"smaller"* on the actual button beats a paragraph describing it. (**Copy** grabs every note as markdown.)
-3. **Back in the CLI, applied.** Write **"done"** — the agent fixes each pin, re-verifies in the browser, and
+3. **Back in the CLI, applied.** Say **"done"** — the agent fixes each pin, re-verifies in the browser, and
    reports what changed. Loop until it's perfect.
 
-**The payoff:** your coding agent finally *sees what you see* — "looks wrong in the browser" becomes "fixed in the code" in one click. No extension, no MCP, no leaving your terminal.
+**The payoff:** your coding agent finally *sees what you see* — "looks wrong in the browser" becomes "fixed in the code" in one click.
 
 <sub>Overlay keys: Save = ⌘/Ctrl+Enter · Copy = notes→clipboard · Alt+A pause · Clear wipes · ✕ deletes one.</sub>
 
-## Install
-
-**As a skill — any agent** (via [skills.sh](https://www.skills.sh)). **Self-contained** — the CDP client is
-bundled in the skill, so this alone is enough; the agent calls `python3 <skill-dir>/cdp.py` (needs only Python 3 + a debug Chrome):
+## Install — one skill, that's it
 
 ```bash
-npx skills add kuzmany/browser-annotations   # Claude Code, Cursor, 50+ agents   (--agent '*' for all)
+npx skills add kuzmany/browser-annotations   # Claude Code · Cursor · Codex · 50+ agents   (--agent '*' for all)
 ```
 
-**Want the `browser-annotate` shell command** (for typing it yourself)? Run the installer:
+**Self-contained** — the CDP client (`cdp.py`) and the overlay ship *inside* the skill. Nothing else to install.
+Needs only **Python 3** and a Chrome — and if no debug Chrome is running, the skill **launches one for you**
+(its own profile in `~/.browser-annotations/chrome`). That's the whole setup.
+
+## On by default — you never flip a switch
+
+After install, *displaying annotations is the default*: whenever your agent opens a page to show you work, it
+injects the overlay automatically (the skill loop does this). You point and comment; saved pins reload from
+`localStorage`. Works with **any** agent, however you open the page — no extra config.
+
+<details><summary><b>Optional: persistent passive display with browser-harness</b></summary>
+
+Drive Chrome through [browser-harness](https://github.com/browser-use/browser-harness) and want pages to
+**auto-show their saved pins on every reload** — passively (pins visible, clicks pass through, no automation
+disruption)? Register the overlay once on the session. Add to your harness startup (e.g. `agent_helpers.py`),
+right after a tab is attached:
+
+```python
+import os
+src = open(os.path.expanduser("~/.claude/skills/browser-annotations/bh-annotate.js")).read()
+cdp("Page.addScriptToEvaluateOnNewDocument",
+    source="window.__bhAnnoStartMode=false;\n" + src)   # passive start; drop the prefix for active
+```
+
+Every page in the session then re-shows its saved annotations across reloads. Explicit `browser-annotate` still
+flips the current page to **active** for new notes.
+</details>
+
+## Use it without any agent
+
+Open DevTools (F12) → Console → paste the overlay (`skills/browser-annotations/bh-annotate.js`) → annotate →
+**Copy** → paste the markdown to your agent. Prefer one click? Make a bookmark:
+
+<details><summary><b>📌 Annotate bookmarklet</b> — drag once, click on any page</summary>
+
+New bookmark, name it `📌 Annotate`, paste as the URL:
+
+```
+javascript:(function(){var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/gh/kuzmany/browser-annotations@main/skills/browser-annotations/bh-annotate.js';document.body.appendChild(s);})();
+```
+
+Click it on any page → overlay loads → annotate → **Copy**. (Pins persist in `localStorage`; re-click after a hard reload.)
+</details>
+
+Want a typed shell command instead of the agent calling it? One alias:
 
 ```bash
-git clone https://github.com/kuzmany/browser-annotations && cd browser-annotations && ./install.sh
+alias browser-annotate='python3 ~/.claude/skills/browser-annotations/cdp.py inject --js-file ~/.claude/skills/browser-annotations/bh-annotate.js'
+alias browser-apply='python3 ~/.claude/skills/browser-annotations/cdp.py pull'
 ```
 
-**No install at all?** Paste `overlay/bh-annotate.js` into the DevTools console and annotate any page.
+## What the agent runs for you
 
-### Run it — one command, zero setup
-
-```bash
-browser-annotate --open https://localhost:3000
-```
-
-That's it. If no debug Chrome is running, it **launches one for you** (its own profile in
-`~/.browser-annotations/chrome`), opens the page, and turns annotations on. Already have a Chrome on
-`--remote-debugging-port`? It attaches to that instead. Set `$CHROME` to pick a specific binary.
-
-**Cross-machine** (CLI and Chrome on different hosts — e.g. CLI in a VM, Chrome on your laptop)? Point it
-at the reachable endpoint: `--cdp ws://<host>:<port>/…` or `$CDP_URL` / `$BU_CDP_WS`
-(browser-harness users: `$BH_CDP_ENV` → its `.env`, live endpoint auto-read).
-
-## Commands (what the agent runs for you)
-
-| Command (short alias) | Does |
+| Command | Does |
 |---|---|
-| `browser-annotate` (`bh-annotate`) `[--open URL] [--url SUB]` | inject the overlay (annotations on). `--open URL` opens a fresh tab first (or launches Chrome if none is running) — no browser-harness needed. |
-| `browser-apply` (`bh-apply`) `[--url SUB] [--json]` | export notes → `./.annotations/notes.md` |
+| `python3 <skill>/cdp.py inject --js-file <skill>/bh-annotate.js [--open URL] [--url SUB]` | inject the overlay (annotations on). `--open URL` opens a fresh tab — and launches Chrome if none is running. |
+| `python3 <skill>/cdp.py pull [--url SUB] [--json]` | export notes → `./.annotations/notes.md` |
 
-Endpoint: `--cdp` → `$CDP_URL` → `$BU_CDP_WS` → `http://localhost:9222`.
-`--url` pins a tab by URL; `--window ID` pins a Chrome window — auto-resolved from `$BH_SESSION_WINDOW_ID` or browser-harness's `~/.bh-session-windows.json` (keyed by `$BU_NAME`).
+`<skill>` = the installed skill dir, e.g. `~/.claude/skills/browser-annotations`.
+Endpoint: `--cdp` → `$CDP_URL` → `$BU_CDP_WS` → `http://localhost:9222`. `--url` pins a tab by URL substring.
 
-Each note in `notes.md` carries a **unique CSS selector** + tag/text/box — so the agent edits the exact element, no guessing:
+Each note carries a **unique CSS selector** + tag/text/box, so the agent edits the exact element — no guessing:
 
 ```markdown
 ## [#2] `header > div > a`  — a "Order"
@@ -88,9 +114,12 @@ note: make this button green
 
 ## How it works
 
-- Injects the overlay over CDP (browser WebSocket + flat session) — **CSP-safe**. Your pins + notes persist in `localStorage`; after a hard page reload just re-run `browser-annotate` to bring the overlay back (it reloads your pins).
-- `lib/cdp.py` is ~190 lines, **stdlib only** (no pip deps); it also does `shot` (screenshots) for the agent's self-check.
-- Self-contained — `--open <url>` creates+navigates its own tab over CDP, so it needs nothing but a `--remote-debugging-port` Chrome. When **browser-harness** is present it's used for nicer opening (right session window + domain-skills) and screenshots — but never required.
+- Injects the overlay over CDP (browser WebSocket + flat session) — **CSP-safe**. Pins + notes persist in
+  `localStorage` per path; after a hard reload the overlay re-arms (instantly with browser-harness; re-run otherwise).
+- `cdp.py` is small, **stdlib only** (no pip deps); it also does `shot` (full-page screenshots via `--full`) for the agent's self-check.
+- **Self-contained** — `--open <url>` creates its own tab over CDP and even launches Chrome if needed, so a fresh
+  machine works with one command. When **browser-harness** is present it's used for nicer opening (right session
+  window + domain-skills) and screenshots — but never required.
 
 ## License
 

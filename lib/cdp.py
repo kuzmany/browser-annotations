@@ -1,1 +1,0 @@
-../skills/browser-annotations/cdp.py
