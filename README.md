@@ -105,11 +105,13 @@ alias browser-apply='python3 ~/.claude/skills/browser-annotations/cdp.py pull'
 `<skill>` = the installed skill dir, e.g. `~/.claude/skills/browser-annotations`.
 Endpoint: `--cdp` → `$CDP_URL` → `$BU_CDP_WS` → `http://localhost:9222`. `--url` pins a tab by URL substring.
 
-Each note carries a **unique CSS selector** + tag/text/box, so the agent edits the exact element — no guessing:
+Each note leads with what you wrote, then the element's **opening tag** (real `id`/`class`/attrs) + its text —
+so the agent greps those in your source and edits the exact element, no guessing from a positional selector:
 
 ```markdown
-## [#2] `header > div > a`  — a "Order"
-note: make this button green
+## [#2] make this button green
+`<a class="btn cta-primary" data-testid="order-btn" href="/order">`  — text: "Order"
+selector: `header > div > a` · box 95x36 @1466,1309 · color rgb(10,13,23) · bg rgb(255,90,54)
 ```
 
 ## How it works

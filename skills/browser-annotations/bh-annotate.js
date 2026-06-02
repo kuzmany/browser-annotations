@@ -139,13 +139,33 @@
   }
 
   // ---------- click → capture ----------
+  // Source-mapping anchors: real id/class/attrs + a literal opening tag the agent
+  // can grep in the codebase (far more reliable than the positional DOM selector).
+  function attrsOf(t) {
+    var o = {};
+    if (t.attributes) for (var i = 0; i < t.attributes.length; i++) {
+      var a = t.attributes[i];
+      if (a.name === "style" || a.name === "class" || a.name === "id") continue;
+      o[a.name] = (a.value || "").slice(0, 120);
+    }
+    return o;
+  }
+  function openTagOf(tag, id, cls, attrs) {
+    var s = "<" + tag;
+    if (id) s += ' id="' + id + '"';
+    if (cls) s += ' class="' + cls + '"';
+    for (var k in attrs) s += " " + k + '="' + attrs[k] + '"';
+    return (s.length > 240 ? s.slice(0, 240) + "…" : s) + ">";
+  }
   var pending = null;
   function onClick(e) {
     if (!S.mode || isUI(e.target)) return;
     e.preventDefault(); e.stopPropagation();
     var t = e.target, r = t.getBoundingClientRect(), cs = getComputedStyle(t);
+    var id = t.id || "", cls = (typeof t.className === "string" ? t.className : (t.getAttribute("class") || "")), at = attrsOf(t);
     pending = {
       selector: selectorFor(t), tag: t.tagName.toLowerCase(),
+      elId: id, cls: cls, attrs: at, html: openTagOf(t.tagName.toLowerCase(), id, cls, at),
       text: (t.textContent || "").replace(/\s+/g, " ").trim().slice(0, 80),
       rect: { x: Math.round(r.left + scrollX), y: Math.round(r.top + scrollY), w: Math.round(r.width), h: Math.round(r.height) },
       color: cs.color, bg: cs.backgroundColor
@@ -216,13 +236,15 @@
     var L = ["# Web annotations — " + S.items.length + " item(s)", "", "Source: " + location.href, ""];
     S.items.forEach(function (a) {
       var r = a.rect || {};
-      L.push("## [#" + a.id + "] `" + a.selector + "`  — " + a.tag + ' "' + (a.text || "").slice(0, 60) + '"');
-      L.push("note: " + a.note);
-      var m = [];
+      L.push("## [#" + a.id + "] " + (a.note || ""));
+      var anchor = "`" + (a.html || ("<" + a.tag + ">")) + "`";
+      if (a.text) anchor += '  — text: "' + a.text.slice(0, 80) + '"';
+      L.push(anchor);
+      var m = ["selector: `" + a.selector + "`"];
       if (r.w != null) m.push("box " + r.w + "x" + r.h + " @" + r.x + "," + r.y);
       if (a.color) m.push("color " + a.color);
       if (a.bg) m.push("bg " + a.bg);
-      if (m.length) L.push(m.join(" · "));
+      L.push(m.join(" · "));
       L.push("");
     });
     return L.join("\n");

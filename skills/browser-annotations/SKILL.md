@@ -114,10 +114,13 @@ In the overlay: hover highlights · click opens a note box · Save / ⌘Ctrl+Ent
 
 ## Output format (`notes.md`)
 
+Note is the heading; the **opening tag** (real id/class/attrs) + text are the source anchors —
+grep the codebase for those, not the positional `selector`:
+
 ```markdown
-## [#2] `header > div > div > a`  — a "Order"
-note: make this button green
-box 95x36 @1466,1309 · color rgb(10,13,23) · bg rgb(255,90,54)
+## [#2] make this button green
+`<a class="btn cta-primary" data-testid="order-btn" href="/order">`  — text: "Order"
+selector: `header > div > a` · box 95x36 @1466,1309 · color rgb(10,13,23) · bg rgb(255,90,54)
 ```
 
 ## Gotchas

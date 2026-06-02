@@ -378,15 +378,18 @@ def cmd_pull(args):
         print(json.dumps(items, ensure_ascii=False, indent=2)); return
     L = [f"# Web annotations — {len(items)} item(s)", "", f"Source: {href}", ""]
     for a in items:
-        sel = a.get("selector", ""); tag = a.get("tag", ""); txt = (a.get("text") or "")[:60]
-        r = a.get("rect") or {}
-        L.append(f"## [#{a.get('id')}] `{sel}`  — {tag} \"{txt}\"")
-        L.append(f"note: {a.get('note','')}")
-        meta = []
+        sel = a.get("selector", ""); tag = a.get("tag", ""); txt = (a.get("text") or "")[:80]
+        html = a.get("html") or f"<{tag}>"; r = a.get("rect") or {}
+        L.append(f"## [#{a.get('id')}] {a.get('note','')}")
+        anchor = f"`{html}`"
+        if txt:
+            anchor += f'  — text: "{txt}"'
+        L.append(anchor)
+        meta = [f"selector: `{sel}`"]
         if r: meta.append(f"box {r.get('w',0)}x{r.get('h',0)} @{r.get('x',0)},{r.get('y',0)}")
         if a.get("color"): meta.append(f"color {a['color']}")
         if a.get("bg"): meta.append(f"bg {a['bg']}")
-        if meta: L.append(" · ".join(meta))
+        L.append(" · ".join(meta))
         L.append("")
     out_text = "\n".join(L)
     out_path = args.out or os.path.join(os.getcwd(), ".annotations", "notes.md")
