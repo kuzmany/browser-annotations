@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "browser-annotations",
+  "version": "1.0.0",
+  "description": "Point at any page, type what to change, copy the notes to your AI coding agent.",
+  "permissions": ["activeTab", "scripting"],
+  "action": { "default_title": "Annotate this page (browser-annotations)" },
+  "background": { "service_worker": "background.js" },
+  "icons": { "16": "icon.png", "48": "icon.png", "128": "icon.png" }
+}

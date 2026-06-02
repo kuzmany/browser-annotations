@@ -4,7 +4,7 @@
 
 **Point at your UI in the browser, say what to change — your AI agent reads it and edits the code.**
 
-No extension. No MCP. No account. One skill.
+No MCP. No account. Works with any AI agent.
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-FF5A36.svg)
 ![python3](https://img.shields.io/badge/python3-555.svg)
@@ -67,15 +67,16 @@ across reloads, passively (pins visible, clicks pass through). Knobs: `BH_ANNOTA
 `=all` = passive everywhere · `=active` = ready to annotate · `=0` = off.
 </details>
 
-<details><summary><b>Use it without an agent (bookmarklet / console)</b></summary>
+<details><summary><b>Use it without an agent — Chrome extension</b></summary>
 
-Paste `skills/browser-annotations/bh-annotate.js` into DevTools (F12) console → annotate → **Copy** → paste to your agent.
+Annotate any page by hand and paste the notes to your agent — no skill, no Python, no terminal.
 
-One-click bookmark — name it `📌 Annotate`, set the URL to:
+1. Clone the repo, open **chrome://extensions** → enable **Developer mode** → **Load unpacked** → pick the `extension/` folder.
+2. Click the **browser-annotations** toolbar button on any page → hover → click the element → type a note → **Save**.
+3. **Copy** → paste the markdown into your AI agent.
 
-```
-javascript:(function(){var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/gh/kuzmany/browser-annotations@main/skills/browser-annotations/bh-annotate.js';document.body.appendChild(s);})();
-```
+The extension reuses the same overlay, so notes carry the same source anchors (id/class/attrs/text).
+No-install fallback: paste `skills/browser-annotations/bh-annotate.js` into the DevTools (F12) console.
 </details>
 
 <details><summary><b>Commands & shell aliases</b></summary>
