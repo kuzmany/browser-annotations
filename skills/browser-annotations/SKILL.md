@@ -28,10 +28,12 @@ brevity — they mean exactly `python3 "$D/cdp.py" inject --js-file "$D/bh-annot
 Displaying annotations is the default once this skill is installed — never ask the user to "enable" it:
 
 - **You (the agent)** inject the overlay whenever you open a page for review — the loop below does this.
-- **If the user's browser-harness `bh-open` has the auto-display hook** (it registers the overlay with
-  `window.__bhAnnoStartMode=false` before navigating), pages that already have saved annotations auto-show them
-  *passively* (pins visible, clicks pass through — won't disrupt automation), surviving reloads. When you hand
-  off for **new** annotation, run `browser-annotate` — it flips the overlay to **active** (interactive capture).
+- **If the user drives browser-harness**, the optional auto-attach installer
+  (`python3 "$D/integrations/browser-harness.py"` — wraps `new_tab`/`goto_url` via its `agent_helpers.py` hook)
+  makes **every** page auto-show its saved annotations on open + across reloads, *passively* (pins visible,
+  clicks pass through — won't disrupt automation). When you hand off for **new** annotation, run
+  `browser-annotate` — it flips the overlay to **active** (interactive capture). Knobs: `BH_ANNOTATE`
+  unset = passive + noted-only · `=all` = passive everywhere · `=active` = interactive · `=0` = off.
 
 Turn browser clicks + notes into code edits. The loop: **open → annotate → apply → verify**.
 Talks straight to Chrome over CDP — no extension, no MCP, no server.

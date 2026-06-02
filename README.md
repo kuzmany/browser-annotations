@@ -54,22 +54,22 @@ After install, *displaying annotations is the default*: whenever your agent open
 injects the overlay automatically (the skill loop does this). You point and comment; saved pins reload from
 `localStorage`. Works with **any** agent, however you open the page — no extra config.
 
-<details><summary><b>Optional: persistent passive display with browser-harness</b></summary>
+<details><summary><b>Optional: auto-attach to every browser-harness page</b></summary>
 
-Drive Chrome through [browser-harness](https://github.com/browser-use/browser-harness) and want pages to
-**auto-show their saved pins on every reload** — passively (pins visible, clicks pass through, no automation
-disruption)? Register the overlay once on the session. Add to your harness startup (e.g. `agent_helpers.py`),
-right after a tab is attached:
+Drive Chrome through [browser-harness](https://github.com/browser-use/browser-harness)? Run the installer **once**:
 
-```python
-import os
-src = open(os.path.expanduser("~/.claude/skills/browser-annotations/bh-annotate.js")).read()
-cdp("Page.addScriptToEvaluateOnNewDocument",
-    source="window.__bhAnnoStartMode=false;\n" + src)   # passive start; drop the prefix for active
+```bash
+python3 ~/.claude/skills/browser-annotations/integrations/browser-harness.py
 ```
 
-Every page in the session then re-shows its saved annotations across reloads. Explicit `browser-annotate` still
-flips the current page to **active** for new notes.
+It wraps browser-harness's `new_tab()` / `goto_url()` via its `agent_helpers.py` hook — so **every** page you
+open auto-attaches the overlay: shows its saved annotations on open, persists across reloads, passively (pins
+visible, clicks pass through — no automation disruption). No per-session step, no `bh-open` required.
+
+Knobs (read per call, set in the shell): `BH_ANNOTATE` unset = passive + only pages with saved notes ·
+`=all` = passive on every page · `=active` = interactive (ready to annotate) · `=0` = off.
+Undo with `python3 ~/.claude/skills/browser-annotations/integrations/browser-harness.py --uninstall`.
+Explicit `browser-annotate` still flips the current page to **active** for new notes.
 </details>
 
 ## Use it without any agent
