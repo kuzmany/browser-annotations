@@ -2,12 +2,12 @@
 
 # browser-annotations
 
-**Point at your UI in the browser, say what to change — your AI agent reads it and edits the code.**
+**Point at your UI in the browser, say what to change — copy the notes straight to your AI coding agent.**
 
-No MCP. No account. Works with any AI agent.
+A tiny Chrome extension. No account. No server. No data leaves your browser.
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-FF5A36.svg)
-![python3](https://img.shields.io/badge/python3-555.svg)
+![Manifest V3](https://img.shields.io/badge/Chrome-MV3-555.svg)
 ![Works with](https://img.shields.io/badge/works%20with-Claude%20Code%20·%20Cursor%20·%20Codex-FF5A36.svg)
 
 <img src="docs/demo.png" alt="browser-annotations: numbered pins on a live page + the annotations panel" width="820">
@@ -21,89 +21,67 @@ No MCP. No account. Works with any AI agent.
 You ask for a change, the agent writes code it can't see, you squint at the browser and type a paragraph —
 *"CTA too big, move it left, wrong green."* Slow, lossy, repeat.
 
-**Point at the real UI instead.** One sentence runs the loop:
-
-> ### "validate this feature on localhost:3000 in the browser"
-
-1. **Agent ships + proves it** — builds the change, opens the page, screenshots, checks it actually rendered.
-2. **You point, not type** — hover → click the thing → say what's wrong → **Save**. (**Copy** = all notes as markdown.)
-3. **Applied** — say **"done"**; the agent fixes each pin, re-verifies, reports. Loop till perfect.
-
-<sub>Keys: Save = ⌘/Ctrl+Enter · Copy = notes→clipboard · Alt+A pause · Clear · ✕ delete one.</sub>
+**Point at the real UI instead.** Click the element, type the change, copy — paste into your agent. Each note
+carries the element's **opening tag, id/class/attributes, nearby label and text** — the literal strings your
+agent greps in your source — so it edits the exact code, not a guess.
 
 ## Install
 
-```bash
-npx skills add kuzmany/browser-annotations   # Claude Code · Cursor · Codex · 50+ agents
-```
+Not on the Web Store yet — load it unpacked (30 seconds):
 
-Self-contained — the CDP client + overlay ship inside the skill. Needs only **Python 3** + Chrome (it launches
-its own if none is running). **On by default:** when your agent opens a page to show you work, the overlay is
-already there — you just start clicking.
+1. Clone the repo (or download it).
+2. Open **`chrome://extensions`** → turn on **Developer mode** (top-right).
+3. **Load unpacked** → pick the **`extension/`** folder.
+4. Pin **browser-annotations** to your toolbar.
 
-## Why it finds the right code
+## Use it
 
-Each note hands the agent the element's **opening tag** (real `id` / `class` / attributes) + its text — literal
-strings to grep in your source, not a fragile DOM path:
+1. **Toggle on** — click the toolbar button (or **Alt+Shift+A**). The badge turns ●.
+2. **Annotate** — hover → click the element → type the change → **Save**. Repeat.
+3. **Copy** — the panel's **Copy** button (or **Alt+Shift+C**) → paste the markdown into your agent.
+4. Toggle off when done (same button). Pins are saved in the page's `localStorage` — they come back when you re-enable.
+
+Works on any normal page (it can't run on `chrome://`, the Web Store, or PDFs — it'll show a red `!` if you try).
+
+### Shortcuts
+
+| Key | Action |
+|---|---|
+| **Alt+Shift+A** | toggle the overlay on/off |
+| **Alt+Shift+C** | copy all notes as **markdown** |
+| **Alt+Shift+J** | copy all notes as **JSON** |
+| **Alt+A** | pause/resume capture (clicks pass through while paused) |
+| **⌘/Ctrl+Enter** | save the note · **Esc** cancel |
+
+Rebind any of them at `chrome://extensions/shortcuts`.
+
+## What your agent gets
+
+Each note leads with what you wrote, then real **source anchors** — grep those, don't guess from a positional path:
 
 ```markdown
 ## [#2] make this button green
-`<a class="btn cta-primary" data-testid="order-btn" href="/order">`  — text: "Order"
-selector: `header > div > a` · box 95x36 · color rgb(10,13,23) · bg rgb(255,90,54)
+`<a id="cta" class="btn primary" data-testid="order" href="/order">`  — text: "Order"
+label: "Place your order"
+instance: 2 of 5 matching a.btn
+selector: `header > div > a` · box 95x36 @1466,1309 · color rgb(10,13,23) · css fontSize:14px padding:8px 16px borderRadius:6px
 ```
 
-## More
+The agent greps `order` / `btn primary` / `data-testid="order"` / `"Order"` → finds the exact element. The
+ordinal disambiguates repeated elements; the computed styles give it the before-state for "make the padding smaller".
 
-<details><summary><b>Auto-attach to every browser-harness page</b></summary>
+## Built for modern apps
 
-Drive Chrome through [browser-harness](https://github.com/browser-use/browser-harness)? Run once:
+- **SPA-aware** — re-keys your notes on client-side navigation (`pushState`/`popstate`/`hashchange`), so notes
+  don't vanish or save under the wrong route in React / Vue / Next.
+- **CSP-safe** — the overlay is injected as a content script (vanilla JS, ~17 KB), no inline-eval.
+- **Minimal permissions** — `activeTab` + `scripting` + `storage`. **No `host_permissions`**, no background
+  network, no account. Notes live only in the page's `localStorage`.
 
-```bash
-python3 ~/.claude/skills/browser-annotations/integrations/browser-harness.py   # --uninstall to undo
-```
+## Roadmap
 
-Wraps `new_tab()` / `goto_url()` via its `agent_helpers.py` hook → every page auto-shows its saved annotations,
-across reloads, passively (pins visible, clicks pass through). Knobs: `BH_ANNOTATE` unset = passive + noted-only ·
-`=all` = passive everywhere · `=active` = ready to annotate · `=0` = off.
-</details>
-
-<details><summary><b>Use it without an agent — Chrome extension</b></summary>
-
-Annotate any page by hand and paste the notes to your agent — no skill, no Python, no terminal.
-
-1. Clone the repo, open **chrome://extensions** → enable **Developer mode** → **Load unpacked** → pick the `extension/` folder.
-2. Click the toolbar button — or press **Alt+Shift+A** — to **toggle** annotations on/off. Then hover → click the element → type a note → **Save**.
-3. **Copy** (button, or **Alt+Shift+C**) → paste the markdown into your AI agent.
-
-Shortcuts are rebindable at `chrome://extensions/shortcuts`. While annotating: **Alt+A** pause · **⌘/Ctrl+Enter** save · **Esc** cancel.
-The extension reuses the same overlay, so notes carry the same source anchors (id/class/attrs/text).
-No-install fallback: paste `skills/browser-annotations/bh-annotate.js` into the DevTools (F12) console.
-</details>
-
-<details><summary><b>Commands & shell aliases</b></summary>
-
-The agent calls these (`<skill>` = `~/.claude/skills/browser-annotations`):
-
-| Command | Does |
-|---|---|
-| `python3 <skill>/cdp.py inject --js-file <skill>/bh-annotate.js [--open URL] [--url SUB]` | inject overlay (launches Chrome if none) |
-| `python3 <skill>/cdp.py pull [--url SUB] [--json]` | export notes → `./.annotations/notes.md` |
-
-Endpoint: `--cdp` → `$CDP_URL` → `$BU_CDP_WS` → `http://localhost:9222`. Want to type it yourself?
-
-```bash
-alias browser-annotate='python3 ~/.claude/skills/browser-annotations/cdp.py inject --js-file ~/.claude/skills/browser-annotations/bh-annotate.js'
-alias browser-apply='python3 ~/.claude/skills/browser-annotations/cdp.py pull'
-```
-</details>
-
-<details><summary><b>How it works</b></summary>
-
-- Injects the overlay over CDP (browser WebSocket + flat session) — **CSP-safe**. Pins persist in `localStorage`
-  per path; re-run after a hard reload to bring the overlay back (automatic with browser-harness).
-- `cdp.py` is small, **stdlib only** (no pip deps); also does `shot` for the agent's screenshot self-check.
-- browser-harness, when present, is used for nicer opening + screenshots — but never required.
-</details>
+Edit/undo, resilient pin re-locate, live repositioning, action popup, options page, JSON/download exports, shadow-DOM
+& same-origin-iframe capture, Web Store listing, and more — see **[extension/ROADMAP.md](extension/ROADMAP.md)**.
 
 ## License
 

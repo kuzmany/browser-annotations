@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "browser-annotations",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Point at any page, type what to change, copy the notes to your AI coding agent.",
   "permissions": ["activeTab", "scripting", "storage"],
   "action": { "default_title": "Toggle annotations (browser-annotations) — Alt+Shift+A" },
@@ -14,6 +14,10 @@
     "copy-annotations": {
       "suggested_key": { "default": "Alt+Shift+C" },
       "description": "Copy all annotations as markdown (to paste into your agent)"
+    },
+    "copy-annotations-json": {
+      "suggested_key": { "default": "Alt+Shift+J" },
+      "description": "Copy all annotations as JSON"
     }
   },
   "icons": { "16": "icon.png", "48": "icon.png", "128": "icon.png" }

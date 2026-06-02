@@ -1,17 +1,17 @@
 /* browser-annotations — visual web annotation overlay for AI coding workflows.
  *
- * Click elements on a page, write notes; export them as markdown your AI
- * coding agent (Claude Code, etc.) can read and act on.
+ * Click elements on a page, write notes; copy them as markdown your AI coding
+ * agent (Claude Code, Cursor, Codex) can read and act on.
  *
- * Two ways to load it:
- *   1) browser-annotate CLI: injects this via CDP (re-injects on reload only while a debugger stays attached; one-shot CLI → re-run after a hard reload).
- *   2) standalone:       paste this file into DevTools console, or use as a bookmarklet.
+ * Loaded by the Chrome extension (toolbar / Alt+Shift+A) as a content script,
+ * or paste this file into the DevTools console standalone.
  *
- * No build step, no framework, CSP-safe (CDP eval world), idempotent.
- * Annotations persist in localStorage per path; read them back with `browser-apply`
- * or `JSON.stringify(window.__bhAnno.items)`.
+ * No build step, no framework, CSP-safe, idempotent. Annotations persist in
+ * localStorage per route; the panel's Copy button (or Alt+Shift+C) puts them on
+ * the clipboard. Read them programmatically via JSON.stringify(window.__bhAnno.items).
  *
- * State: window.__bhAnno = { items:[{id,selector,tag,text,note,rect,color,bg,ts}], ... }
+ * Public API: window.__bhAnno = { items[], markdown(), json(), copy(), copyJson(),
+ *   copyPrompt(), clear(), activate(), destroy(), mode }.
  * MIT License.
  */
 (function () {
@@ -22,11 +22,12 @@
   // window.__bhAnnoStartMode=false to start passive — pins show, clicks pass through.
   var S = (window[NS] = { installed: true, ready: false, items: [],
     mode: (typeof window.__bhAnnoStartMode === "boolean" ? window.__bhAnnoStartMode : true) });
-  var KEY = "bh-anno:" + location.pathname;
-  try { var saved = localStorage.getItem(KEY); if (saved) S.items = JSON.parse(saved) || []; } catch (e) {}
+  // Per-route key (path + hash) so single-page-app navigation re-keys correctly.
+  function getKey() { return "bh-anno:" + location.pathname + location.hash; }
+  try { var saved = localStorage.getItem(getKey()); if (saved) S.items = JSON.parse(saved) || []; } catch (e) {}
   var seq = S.items.reduce(function (m, a) { return Math.max(m, a.id || 0); }, 0);
 
-  function save() { try { localStorage.setItem(KEY, JSON.stringify(S.items)); } catch (e) {} }
+  function save() { try { localStorage.setItem(getKey(), JSON.stringify(S.items)); } catch (e) {} }
   function cssEsc(s) { return (window.CSS && CSS.escape) ? CSS.escape(s) : String(s).replace(/[^\w-]/g, "\\$&"); }
   function isUniq(sel) { try { return document.querySelectorAll(sel).length === 1; } catch (e) { return false; } }
 
@@ -109,8 +110,8 @@
   ph.appendChild(el("span", { class: "sp" })); ph.appendChild(bCopy); ph.appendChild(bMode); ph.appendChild(bClear);
   var list = el("div", { id: "bh-list" });
   var foot = el("div", { class: "f" });
-  var fLeft = document.createElement("span"); fLeft.textContent = "apply: browser-apply";
-  var fRight = document.createElement("span"); fRight.textContent = "⌥A toggle";
+  var fLeft = document.createElement("span"); fLeft.textContent = "Copy → paste to your agent";
+  var fRight = document.createElement("span"); fRight.textContent = "⌥A pause";
   foot.appendChild(fLeft); foot.appendChild(fRight);
   panel.appendChild(ph); panel.appendChild(list); panel.appendChild(foot);
 
@@ -157,6 +158,35 @@
     for (var k in attrs) s += " " + k + '="' + attrs[k] + '"';
     return (s.length > 240 ? s.slice(0, 240) + "…" : s) + ">";
   }
+  // Extra disambiguators for the agent: nearest accessible label, instance ordinal
+  // among same-tag/class matches, and the relevant computed styles (free — cs is
+  // already read on click) so "make the padding smaller" carries a before-state.
+  function nearestLabel(t) {
+    try {
+      var al = t.getAttribute && t.getAttribute("aria-label"); if (al) return al.trim().slice(0, 80);
+      var lb = t.getAttribute && t.getAttribute("aria-labelledby");
+      if (lb) { var le = document.getElementById(lb.split(/\s+/)[0]); if (le) return (le.textContent || "").trim().slice(0, 80); }
+      var ph = t.getAttribute && t.getAttribute("placeholder"); if (ph) return ph.trim().slice(0, 80);
+      if (t.labels && t.labels.length) return (t.labels[0].textContent || "").trim().slice(0, 80);
+      var l = t.closest && t.closest("label"); if (l) return (l.textContent || "").trim().slice(0, 80);
+    } catch (e) {}
+    return "";
+  }
+  function ordinalOf(t) {
+    try {
+      var first = (typeof t.className === "string" && t.className.trim()) ? t.className.trim().split(/\s+/)[0] : "";
+      var sel = t.tagName.toLowerCase() + (first ? "." + cssEsc(first) : "");
+      var all = document.querySelectorAll(sel);
+      if (all.length > 1) { var idx = Array.prototype.indexOf.call(all, t); if (idx >= 0) return (idx + 1) + " of " + all.length + " matching " + sel; }
+    } catch (e) {}
+    return "";
+  }
+  var _STYLE_KEYS = ["fontSize", "fontWeight", "padding", "margin", "display", "borderRadius", "width", "height"];
+  function stylesOf(cs) {
+    var o = {};
+    _STYLE_KEYS.forEach(function (k) { var v = cs[k]; if (v && v !== "normal" && v !== "auto" && v !== "0px" && v !== "none") o[k] = v; });
+    return o;
+  }
   var pending = null;
   function onClick(e) {
     if (!S.mode || isUI(e.target)) return;
@@ -167,6 +197,7 @@
       selector: selectorFor(t), tag: t.tagName.toLowerCase(),
       elId: id, cls: cls, attrs: at, html: openTagOf(t.tagName.toLowerCase(), id, cls, at),
       text: (t.textContent || "").replace(/\s+/g, " ").trim().slice(0, 80),
+      label: nearestLabel(t), ord: ordinalOf(t), styles: stylesOf(cs),
       rect: { x: Math.round(r.left + scrollX), y: Math.round(r.top + scrollY), w: Math.round(r.width), h: Math.round(r.height) },
       color: cs.color, bg: cs.backgroundColor
     };
@@ -191,7 +222,11 @@
     bMode.textContent = S.mode ? "Pause" : "Resume";
     list.innerHTML = "";
     if (!S.items.length) {
-      var em = el("div", { class: "empty" }); em.textContent = "Hover an element, click, type a note.";
+      var em = el("div", { class: "empty" });
+      ["1 · Hover + click an element", "2 · Type the change → Save", "3 · Copy → paste to Claude / Cursor / Codex"].forEach(function (line, i) {
+        if (i) em.appendChild(document.createElement("br"));
+        em.appendChild(document.createTextNode(line));
+      });
       list.appendChild(em);
     }
     S.items.forEach(function (a) {
@@ -231,7 +266,30 @@
   document.addEventListener("keydown", onKey, true);
   window.addEventListener("scroll", layoutPins, true);
   window.addEventListener("resize", layoutPins);
-  // ---------- markdown export (same format as browser-apply) ----------
+
+  // ---------- SPA route awareness ----------
+  // On client-side navigation, re-key to the new route: load its notes + re-pin,
+  // so notes never vanish or save under the wrong path in React/Vue/Next apps.
+  function reloadForPath() {
+    try { var s = localStorage.getItem(getKey()); S.items = s ? (JSON.parse(s) || []) : []; }
+    catch (e) { S.items = []; }
+    seq = S.items.reduce(function (m, a) { return Math.max(m, a.id || 0); }, 0);
+    if (pending) cancel();
+    render();
+  }
+  var _routeT = null;
+  function onRoute() { clearTimeout(_routeT); _routeT = setTimeout(reloadForPath, 150); }
+  var _histWrapped = [];
+  ["pushState", "replaceState"].forEach(function (name) {
+    var orig = history[name];
+    if (typeof orig !== "function") return;
+    history[name] = function () { var r = orig.apply(this, arguments); try { onRoute(); } catch (e) {} return r; };
+    _histWrapped.push([name, orig]);
+  });
+  window.addEventListener("popstate", onRoute);
+  window.addEventListener("hashchange", onRoute);
+
+  // ---------- markdown / json export ----------
   function toMarkdown() {
     var L = ["# Web annotations — " + S.items.length + " item(s)", "", "Source: " + location.href, ""];
     S.items.forEach(function (a) {
@@ -240,30 +298,35 @@
       var anchor = "`" + (a.html || ("<" + a.tag + ">")) + "`";
       if (a.text) anchor += '  — text: "' + a.text.slice(0, 80) + '"';
       L.push(anchor);
+      if (a.label) L.push('label: "' + a.label + '"');
+      if (a.ord) L.push("instance: " + a.ord);
       var m = ["selector: `" + a.selector + "`"];
       if (r.w != null) m.push("box " + r.w + "x" + r.h + " @" + r.x + "," + r.y);
       if (a.color) m.push("color " + a.color);
       if (a.bg) m.push("bg " + a.bg);
+      if (a.styles) { var sl = []; for (var sk in a.styles) sl.push(sk + ":" + a.styles[sk]); if (sl.length) m.push("css " + sl.join(" ")); }
       L.push(m.join(" · "));
       L.push("");
     });
     return L.join("\n");
   }
   function flashCopy(label) { var o = bCopy.textContent; bCopy.textContent = label; setTimeout(function () { bCopy.textContent = o; }, 1200); }
-  function copyMarkdown() {
-    if (!S.items.length) { flashCopy("empty"); return; }
-    var md = toMarkdown();
+  function copyText(text) {
     var fallback = function () {
       try {
-        var ta = el("textarea", {}); ta.value = md; ta.style.cssText = "position:fixed;opacity:0;left:-9999px";
+        var ta = el("textarea", {}); ta.value = text; ta.style.cssText = "position:fixed;opacity:0;left:-9999px";
         (document.body || document.documentElement).appendChild(ta); ta.focus(); ta.select();
         document.execCommand("copy"); ta.remove(); flashCopy("✓ Copied");
       } catch (e) { flashCopy("✗ failed"); }
     };
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(md).then(function () { flashCopy("✓ Copied"); }, fallback);
+      navigator.clipboard.writeText(text).then(function () { flashCopy("✓ Copied"); }, fallback);
     } else { fallback(); }
   }
+  var PROMPT_PRE = "For each annotation below, find the element in my source by its opening tag / selector / text, make the described change, then re-check it in the browser.";
+  function copyMarkdown() { if (!S.items.length) { flashCopy("empty"); return; } copyText(toMarkdown()); }
+  function copyJson() { if (!S.items.length) { flashCopy("empty"); return; } copyText(JSON.stringify(S.items, null, 2)); }
+  function copyPrompt() { if (!S.items.length) { flashCopy("empty"); return; } copyText(PROMPT_PRE + "\n\n" + toMarkdown()); }
 
   bSave.onclick = commit; bCancel.onclick = cancel;
   bCopy.onclick = copyMarkdown;
@@ -274,10 +337,14 @@
   S.show = function () { if (panel) panel.style.display = "flex"; };
   S.dump = function () { return S.items; };
   S.markdown = toMarkdown;
+  S.json = function () { return S.items.slice(); };
+  S.copy = copyMarkdown;      // background (Alt+Shift+C) calls this public method, not the closure
+  S.copyJson = copyJson;      // Alt+Shift+J
+  S.copyPrompt = copyPrompt;
   S.clear = function () { S.items = []; save(); render(); };
-  // Flip from passive display to interactive capture (explicit browser-annotate calls this).
+  // Flip from passive display to interactive capture.
   S.activate = function () { S.mode = true; render(); };
-  // Full teardown — clean removal (drop all nodes + listeners + window.__bhAnno) for any caller.
+  // Full teardown — clean removal (drop all nodes + listeners + restore history) for any caller.
   S.destroy = function () {
     try {
       document.removeEventListener("mousemove", onMove, true);
@@ -285,6 +352,10 @@
       document.removeEventListener("keydown", onKey, true);
       window.removeEventListener("scroll", layoutPins, true);
       window.removeEventListener("resize", layoutPins);
+      window.removeEventListener("popstate", onRoute);
+      window.removeEventListener("hashchange", onRoute);
+      clearTimeout(_routeT);
+      _histWrapped.forEach(function (w) { try { history[w[0]] = w[1]; } catch (e) {} });
       [st, hl, input, panel, pinLayer].forEach(function (n) { if (n && n.parentNode) n.parentNode.removeChild(n); });
     } catch (e) {}
     S.ready = false;
