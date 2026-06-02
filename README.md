@@ -72,9 +72,10 @@ across reloads, passively (pins visible, clicks pass through). Knobs: `BH_ANNOTA
 Annotate any page by hand and paste the notes to your agent — no skill, no Python, no terminal.
 
 1. Clone the repo, open **chrome://extensions** → enable **Developer mode** → **Load unpacked** → pick the `extension/` folder.
-2. Click the **browser-annotations** toolbar button on any page → hover → click the element → type a note → **Save**.
-3. **Copy** → paste the markdown into your AI agent.
+2. Click the toolbar button — or press **Alt+Shift+A** — to **toggle** annotations on/off. Then hover → click the element → type a note → **Save**.
+3. **Copy** (button, or **Alt+Shift+C**) → paste the markdown into your AI agent.
 
+Shortcuts are rebindable at `chrome://extensions/shortcuts`. While annotating: **Alt+A** pause · **⌘/Ctrl+Enter** save · **Esc** cancel.
 The extension reuses the same overlay, so notes carry the same source anchors (id/class/attrs/text).
 No-install fallback: paste `skills/browser-annotations/bh-annotate.js` into the DevTools (F12) console.
 </details>
