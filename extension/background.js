@@ -10,7 +10,7 @@ const DEFAULT_TITLE = "Toggle annotations (browser-annotations) — Alt+Shift+A"
 
 function badge(tabId, text, color) {
   chrome.action.setBadgeText({ tabId, text: text || "" });
-  if (text) chrome.action.setBadgeBackgroundColor({ tabId, color: color || "#FF5A36" });
+  if (text) chrome.action.setBadgeBackgroundColor({ tabId, color: color || "#10A37F" });
 }
 function setTitle(tabId, t) {
   chrome.action.setTitle({ tabId, title: t || DEFAULT_TITLE });
@@ -28,7 +28,7 @@ async function setState(tabId, on) {
 async function enable(tabId) {
   await chrome.scripting.executeScript({ target: { tabId }, files: ["bh-annotate.js"] });
   await setState(tabId, true);
-  badge(tabId, "●", "#FF5A36"); setTitle(tabId);
+  badge(tabId, "●", "#10A37F"); setTitle(tabId);
 }
 async function disable(tabId) {
   await chrome.scripting.executeScript({
